@@ -1,0 +1,88 @@
+/* ===== PAGE BACKGROUND ===== */
+.login-container {
+  min-height: 100vh;
+  background: linear-gradient(to right, #020617, #0f172a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== LOGIN BOX ===== */
+.login-box {
+  background-color: #ffffff;
+  padding: 40px;
+  width: 380px;
+  border-radius: 12px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+/* ===== TEXT ===== */
+.login-box h2 {
+  margin-bottom: 10px;
+  color: #0f172a;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 30px;
+}
+
+/* ===== FORM ===== */
+.login-form {
+  text-align: left;
+}
+
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  outline: none;
+}
+
+.input-group input:focus {
+  border-color: #38bdf8;
+}
+
+/* ===== BUTTON ===== */
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #38bdf8;
+  color: #0f172a;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.login-btn:hover {
+  background-color: #0ea5e9;
+}
+
+/* ===== REGISTER LINK ===== */
+.register-text {
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.register-text a {
+  color: #38bdf8;
+  text-decoration: none;
+  font-weight: bold;
+}
