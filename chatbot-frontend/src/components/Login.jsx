@@ -27,7 +27,7 @@ function Login() {
 
     try {
       // Call your backend API
-      const response = await fetch('http://localhost:8000/login', {
+      const response = await fetch('https://chatbot-eo65.onrender.com/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -185,7 +185,7 @@ function Login() {
               <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Note:</span> This connects to your FastAPI backend at{' '}
-                  <code className="bg-gray-100 px-2 py-1 rounded text-xs">http://localhost:8000/login</code>
+                  <code className="bg-gray-100 px-2 py-1 rounded text-xs">https://chatbot-eo65.onrender.com/login</code>
                 </p>
               </div>
             </div>

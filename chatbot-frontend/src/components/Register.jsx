@@ -60,7 +60,7 @@ function Register() {
 
     try {
       // Call your backend API
-      const response = await fetch('http://localhost:8000/register', {
+      const response = await fetch('https://chatbot-eo65.onrender.com/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -254,7 +254,7 @@ function Register() {
               <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <p className="text-sm text-gray-600">
                   <span className="font-medium">Note:</span> This connects to your FastAPI backend at{' '}
-                  <code className="bg-gray-100 px-2 py-1 rounded text-xs">http://localhost:8000/register</code>
+                  <code className="bg-gray-100 px-2 py-1 rounded text-xs">https://chatbot-eo65.onrender.com/register</code>
                 </p>
               </div>
             </div>

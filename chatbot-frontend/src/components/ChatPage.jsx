@@ -43,9 +43,9 @@ function ChatPage() {
       try {
         // Try multiple endpoints since /health might not exist
         const endpoints = [
-          'http://localhost:8000/',
-          'http://localhost:8000/docs',
-          'http://localhost:8000/redoc'
+          'https://chatbot-eo65.onrender.com/',
+          'https://chatbot-eo65.onrender.com/docs',
+          'https://chatbot-eo65.onrender.com/redoc'
         ];
         
         let backendOnline = false;
@@ -70,7 +70,7 @@ function ChatPage() {
           setBackendStatus("online");
         } else {
           // Try the original health endpoint as last resort
-          const response = await fetch('http://localhost:8000/health', {
+          const response = await fetch('https://chatbot-eo65.onrender.com/health', {
             method: 'GET',
             headers: { 'Accept': 'application/json' },
           });
@@ -146,7 +146,7 @@ function ChatPage() {
       formData.append('document_name', file.name);
       
       // Call backend upload API
-      const response = await fetch('http://localhost:8000/upload/pdf', {
+      const response = await fetch('https://chatbot-eo65.onrender.com/upload/pdf', {
         method: 'POST',
         body: formData,
       });
@@ -274,7 +274,7 @@ function ChatPage() {
           const botMsg = {
             id: Date.now() + 1,
             sender: "bot",
-            text: `🧪 **Simulated Response**\n\n${randomResponse}\n\n*Status: Backend server not detected. To enable real document Q&A, start the backend on http://localhost:8000*`,
+            text: `🧪 **Simulated Response**\n\n${randomResponse}\n\n*Status: Backend server not detected. To enable real document Q&A, start the backend on https://chatbot-eo65.onrender.com*`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
           
@@ -285,7 +285,7 @@ function ChatPage() {
       }
       
       // Call backend API for real response
-      const response = await fetch('http://localhost:8000/chat/ai', {
+      const response = await fetch('https://chatbot-eo65.onrender.com/chat/ai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -333,7 +333,7 @@ function ChatPage() {
       const botMsg = {
         id: Date.now() + 1,
         sender: "bot",
-        text: `⚠️ **Connection Issue**\n\nFailed to connect to backend: ${error.message}\n\nFalling back to simulated mode. Please check:\n1. Backend server is running on http://localhost:8000\n2. CORS is properly configured\n3. API endpoints are correct`,
+        text: `⚠️ **Connection Issue**\n\nFailed to connect to backend: ${error.message}\n\nFalling back to simulated mode. Please check:\n1. Backend server is running on https://chatbot-eo65.onrender.com\n2. CORS is properly configured\n3. API endpoints are correct`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, botMsg]);
@@ -568,7 +568,7 @@ function ChatPage() {
                       The backend server is not running. You can still upload documents and chat in simulated mode, but real document analysis won't be available.
                     </p>
                     <p className="text-yellow-700 text-sm mt-2">
-                      To enable full functionality, start the backend server on <code className="bg-yellow-100 px-1 rounded">http://localhost:8000</code>
+                      To enable full functionality, start the backend server on <code className="bg-yellow-100 px-1 rounded">https://chatbot-eo65.onrender.com</code>
                     </p>
                     <p className="text-yellow-700 text-sm mt-1">
                       <strong>Note:</strong> If backend is running, it might not have a /health endpoint. The app will still work when you upload a file.
