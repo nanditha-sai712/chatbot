@@ -1,11 +1,13 @@
 import React from 'react';
 import { Shield, FileText, Mail, Phone, MapPin, Cpu } from 'lucide-react';
+import { Link } from 'react-router-dom'; // ✅ FIXED
 
 function Footer() {
   return (
     <footer className="bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+
           {/* Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
@@ -15,15 +17,8 @@ function Footer() {
             <p className="text-gray-400">
               Advanced RAG-based document chatbot using Groq for hallucination reduction and accurate document analysis.
             </p>
-            <div className="flex space-x-4">
-              <div className="bg-blue-600 px-3 py-1 rounded-full text-sm font-medium">
-                Groq API
-              </div>
-              <div className="bg-purple-600 px-3 py-1 rounded-full text-sm font-medium">
-                RAG System
-              </div>
-            </div>
           </div>
+
 
           {/* Quick Links */}
           <div>
@@ -31,13 +26,37 @@ function Footer() {
               <FileText className="h-5 w-5 mr-2" />
               Quick Links
             </h3>
+
             <ul className="space-y-3">
-              <li><a href="/documentation" className="text-gray-400 hover:text-white transition-colors">Documentation</a></li>
-              <li><a href="/api" className="text-gray-400 hover:text-white transition-colors">API Reference</a></li>
-              <li><a href="/pricing" className="text-gray-400 hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="/blog" className="text-gray-400 hover:text-white transition-colors">Blog</a></li>
+
+              {/* ✅ href → to */}
+              <li>
+                <Link to="/documentation" className="text-gray-400 hover:text-white">
+                  Documentation
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/api" className="text-gray-400 hover:text-white">
+                  API Reference
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/pricing" className="text-gray-400 hover:text-white">
+                  Pricing
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/blog" className="text-gray-400 hover:text-white">
+                  Blog
+                </Link>
+              </li>
+
             </ul>
           </div>
+
 
           {/* Legal */}
           <div>
@@ -45,13 +64,17 @@ function Footer() {
               <Shield className="h-5 w-5 mr-2" />
               Legal
             </h3>
+
             <ul className="space-y-3">
-              <li><a href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="/cookies" className="text-gray-400 hover:text-white transition-colors">Cookie Policy</a></li>
-              <li><a href="/gdpr" className="text-gray-400 hover:text-white transition-colors">GDPR Compliance</a></li>
+
+              <li><Link to="/privacy" className="text-gray-400 hover:text-white">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="text-gray-400 hover:text-white">Terms of Service</Link></li>
+              <li><Link to="/cookies" className="text-gray-400 hover:text-white">Cookie Policy</Link></li>
+              <li><Link to="/gdpr" className="text-gray-400 hover:text-white">GDPR Compliance</Link></li>
+
             </ul>
           </div>
+
 
           {/* Contact Info */}
           <div>
@@ -59,26 +82,31 @@ function Footer() {
               <Mail className="h-5 w-5 mr-2" />
               Contact Info
             </h3>
+
             <ul className="space-y-3 text-gray-400">
               <li className="flex items-center space-x-2">
                 <Mail className="h-4 w-4" />
                 <span>support@docuchatai.com</span>
               </li>
+
               <li className="flex items-center space-x-2">
                 <Phone className="h-4 w-4" />
                 <span>+1 (555) 123-4567</span>
               </li>
+
               <li className="flex items-start space-x-2">
                 <MapPin className="h-4 w-4 mt-1" />
                 <span>123 AI Street, Tech Valley, CA 94000</span>
               </li>
             </ul>
+
             <div className="mt-6 pt-6 border-t border-gray-800">
               <p className="text-sm text-gray-500">
                 © {new Date().getFullYear()} DocuChat AI. All rights reserved.
               </p>
             </div>
           </div>
+
         </div>
       </div>
     </footer>

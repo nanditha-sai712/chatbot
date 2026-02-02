@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquare, FileText, Brain, LogIn, UserPlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 function Header() {
   return (
@@ -19,54 +20,53 @@ function Header() {
 
           {/* Navigation Links */}
           <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-            <a 
-              href="/" 
+           <Link to="/"
               className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors duration-200 bg-blue-800"
             >
               <MessageSquare className="h-5 w-5" />
               <span>Home</span>
-            </a>
+            </Link>
             
-            <a 
-              href="/chat" 
+            <Link 
+              to="/chat" 
               className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors duration-200"
             >
               <FileText className="h-5 w-5" />
               <span>Chat</span>
-            </a>
+            </Link>
             
-            <a 
-              href="/about" 
+            <Link 
+              to="/about" 
               className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors duration-200"
             >
               <span>About</span>
-            </a>
+            </Link>
             
-            <a 
-              href="/contact" 
+            <Link
+              to="/contact" 
               className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors duration-200"
             >
               <span>Contact Us</span>
-            </a>
+            </Link>
           </div>
 
           {/* Auth Buttons */}
           <div className="flex items-center space-x-3 mt-4 md:mt-0">
-            <a 
-              href="/login" 
+            <Link 
+              to="/login" 
               className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-white hover:bg-white hover:text-blue-900 transition-colors duration-200"
             >
               <LogIn className="h-5 w-5" />
               <span>Login</span>
-            </a>
+            </Link>
             
-            <a 
-              href="/register" 
+            <Link
+              to="/register" 
               className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-white text-blue-900 hover:bg-blue-100 transition-colors duration-200 font-semibold"
             >
               <UserPlus className="h-5 w-5" />
               <span>Register</span>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
