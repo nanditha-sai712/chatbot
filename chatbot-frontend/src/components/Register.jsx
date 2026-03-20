@@ -93,15 +93,15 @@ function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-purple-50">
       <Header />
       
       <main className="py-8">
         <div className="container mx-auto px-4">
           <div className="max-w-md mx-auto">
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                <UserPlus className="h-8 w-8 text-blue-600" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+                <UserPlus className="h-8 w-8 text-purple-600" />
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Create Account
@@ -121,7 +121,7 @@ function Register() {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User className="h-5 w-5 text-gray-400" />
+                      <User className="h-5 w-5 text-white/60" />
                     </div>
                     <input
                       type="text"
@@ -129,7 +129,7 @@ function Register() {
                       value={formData.username}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors"
                       placeholder="Enter username"
                     />
                   </div>
@@ -142,7 +142,7 @@ function Register() {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-gray-400" />
+                      <Mail className="h-5 w-5 text-white/60" />
                     </div>
                     <input
                       type="email"
@@ -150,7 +150,7 @@ function Register() {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors"
                       placeholder="Enter your email"
                     />
                   </div>
@@ -163,7 +163,7 @@ function Register() {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
+                      <Lock className="h-5 w-5 text-white/60" />
                     </div>
                     <input
                       type="password"
@@ -171,7 +171,7 @@ function Register() {
                       value={formData.password}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors"
                       placeholder="Enter your password"
                     />
                   </div>
@@ -187,7 +187,7 @@ function Register() {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
+                      <Lock className="h-5 w-5 text-white/60" />
                     </div>
                     <input
                       type="password"
@@ -195,7 +195,7 @@ function Register() {
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors"
                       placeholder="Confirm your password"
                     />
                   </div>
@@ -221,7 +221,7 @@ function Register() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
                   {loading ? (
                     <>
@@ -242,7 +242,7 @@ function Register() {
                     Already have an account?{' '}
                     <Link 
                       to="/login" 
-                      className="text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-purple-600 hover:text-purple-700 font-medium"
                     >
                       Login here
                     </Link>
@@ -263,7 +263,7 @@ function Register() {
             <div className="mt-8 text-center">
               <h3 className="text-lg font-medium text-gray-900 mb-2">RAG Chatbot Project Features</h3>
               <div className="flex flex-wrap justify-center gap-2 mt-3">
-                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
                   PDF Document Upload
                 </span>
                 <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import { 
   Send, 
   Plus, 
@@ -277,7 +278,7 @@ function ChatPage() {
             text: `🧪 **Simulated Response**\n\n${randomResponse}\n\n*Status: Backend server not detected. To enable real document Q&A, start the backend on https://chatbot-eo65.onrender.com*`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
-          
+          // filter the bot message.text
           setMessages(prev => [...prev, botMsg]);
           setLoading(false);
         }, 1000);
@@ -306,12 +307,28 @@ function ChatPage() {
       
       if (response.ok) {
         // Extract AI response with fallbacks - FIXED: Added more fallback options
-        const aiResponse = data.ai_response || 
-                          data.response || 
-                          data.answer || 
-                          data.message || 
-                          data.detail ||
-                          "I received your message but couldn't generate a proper response.";
+       let aiResponse = data.ai_response || 
+                 data.response || 
+                 data.answer || 
+                 data.message || 
+                 data.detail ||
+                 "I received your message but couldn't generate a proper response.";
+
+// ✅ CLEAN + ADD SPACING
+aiResponse = aiResponse
+  .replace(/#{1,6}\s*/g, '')         // remove headings ###
+  .replace(/\*\*/g, '')              // remove bold **
+  .replace(/`/g, '')                 // remove backticks
+  .replace(/\|/g, ' ')               // remove table pipes
+  .replace(/-{2,}/g, '')             // remove ---- lines
+
+  // ⭐ ADD NICE SPACING
+  .replace(/\.\s+/g, '.\n\n')        // new line after sentences
+  .replace(/\n\s*\n/g, '\n\n')       // normalize spacing
+  .replace(/(\d+\.)\s*/g, '\n$1 ')   // spacing for numbered points
+  .replace(/:\s*/g, ':\n')           // break after headings like "Step:"
+  
+  .trim();
         
         // Add AI response
         const botMsg = {
@@ -391,12 +408,12 @@ function ChatPage() {
     <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Left Sidebar */}
       {sidebarOpen && (
-        <div className="w-64 bg-gray-900 text-white flex flex-col h-full border-r border-gray-800">
+        <div className="w-64 bg-gradient-to-b from-purple-900 via-purple-800 to-pink-700 text-white flex flex-col h-full border-r border-purple-700">
           {/* New Chat Button */}
           <div className="p-3 border-b border-gray-800">
             <button 
               onClick={startNewChat}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-lg transition-all"
             >
               <Plus size={18} />
               <span className="font-medium">New Chat</span>
@@ -405,7 +422,7 @@ function ChatPage() {
 
           {/* Chat History */}
           <div className="flex-1 overflow-y-auto p-2">
-            <div className="text-xs font-medium text-gray-400 px-3 py-2">Recent Chats</div>
+            <div className="text-xs font-medium text-white/60 px-3 py-2">Recent Chats</div>
             <div className="space-y-1">
               {[
                 { id: 1, title: "New Chat", date: "Today", active: true },
@@ -417,7 +434,7 @@ function ChatPage() {
                   className={`w-full text-left px-3 py-3 rounded-lg flex items-center justify-between group ${
                     chat.active 
                       ? "bg-gray-800" 
-                      : "hover:bg-gray-800"
+                      : "hover:bg-white/10"
                   }`}
                   onClick={startNewChat}
                 >
@@ -426,8 +443,8 @@ function ChatPage() {
                     <span className="text-sm truncate">{chat.title}</span>
                   </div>
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100">
-                    <Edit size={14} className="text-gray-400 hover:text-white" />
-                    <Trash2 size={14} className="text-gray-400 hover:text-white" />
+                    <Edit size={14} className="text-white/60 hover:text-white" />
+                    <Trash2 size={14} className="text-white/60 hover:text-white" />
                   </div>
                 </button>
               ))}
@@ -435,7 +452,7 @@ function ChatPage() {
 
             {/* Documents Section */}
             <div className="mt-6">
-              <div className="text-xs font-medium text-gray-400 px-3 py-2">Documents</div>
+              <div className="text-xs font-medium text-white/60 px-3 py-2">Documents</div>
               <div className="space-y-1">
                 {documents.map(doc => (
                   <div 
@@ -443,10 +460,10 @@ function ChatPage() {
                     className="flex items-center justify-between px-3 py-2 hover:bg-gray-800 rounded-lg group"
                   >
                     <div className="flex items-center gap-2">
-                      <FileText size={14} className="text-gray-400" />
+                      <FileText size={14} className="text-white/60" />
                       <div className="flex flex-col">
                         <span className="text-sm truncate max-w-[150px]">{doc.name}</span>
-                        <span className="text-xs text-gray-400">{doc.size} • {doc.date}</span>
+                        <span className="text-xs text-white/60">{doc.size} • {doc.date}</span>
                         {doc.simulated && (
                           <span className="text-xs text-yellow-400">Simulated</span>
                         )}
@@ -454,7 +471,7 @@ function ChatPage() {
                     </div>
                     <button 
                       onClick={(e) => deleteDocument(doc.id, e)}
-                      className="p-1 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100"
+                      className="p-1 text-white/60 hover:text-white opacity-0 group-hover:opacity-100"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -463,7 +480,7 @@ function ChatPage() {
                 
                 <button 
                   onClick={triggerFileInput}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg text-sm mt-2"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-white/60 hover:text-white hover:bg-gray-800 rounded-lg text-sm mt-2"
                 >
                   <Upload size={14} />
                   <span>Upload document</span>
@@ -480,9 +497,9 @@ function ChatPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{user.username}</div>
-                <div className="text-xs text-gray-400 truncate">{user.email}</div>
+                <div className="text-xs text-white/60 truncate">{user.email}</div>
               </div>
-              <Settings size={16} className="text-gray-400 hover:text-white" />
+              <Settings size={16} className="text-white/60 hover:text-white" />
             </div>
           </div>
         </div>
@@ -502,7 +519,7 @@ function ChatPage() {
           )}
           
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-purple-500 flex items-center justify-center">
               <Bot size={18} className="text-white" />
             </div>
             <span className="font-medium">RAG Document Assistant</span>
@@ -549,8 +566,8 @@ function ChatPage() {
             {/* Welcome message when no messages */}
             {messages.length === 1 && messages[0].sender === "bot" && (
               <div className="text-center py-12">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 flex items-center justify-center mx-auto mb-6">
-                  <Bot size={32} className="text-blue-600" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-100 to-purple-100 flex items-center justify-center mx-auto mb-6">
+                  <Bot size={32} className="text-purple-600" />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">RAG Document Chatbot</h1>
                 <p className="text-gray-600 text-lg mb-8 max-w-xl mx-auto">
@@ -580,12 +597,12 @@ function ChatPage() {
                 <div className="max-w-md mx-auto">
                   <div 
                     onClick={triggerFileInput}
-                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer bg-white hover:bg-blue-50"
+                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-white hover:bg-purple-50"
                   >
-                    <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <Upload className="h-12 w-12 text-white/60 mx-auto mb-4" />
                     <p className="text-gray-700 font-medium mb-2">Upload PDF Document</p>
                     <p className="text-gray-500 text-sm">Click to browse or drag & drop</p>
-                    <p className="text-xs text-gray-400 mt-2">Max file size: 10MB</p>
+                    <p className="text-xs text-white/60 mt-2">Max file size: 10MB</p>
                   </div>
                   {uploadError && (
                     <div className="mt-3 text-red-500 text-sm bg-red-50 p-2 rounded">
@@ -605,7 +622,7 @@ function ChatPage() {
                 <div className={`inline-block max-w-[80%] ${msg.sender === "user" ? "text-right" : ""}`}>
                   {msg.sender === "bot" && (
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-purple-500 flex items-center justify-center">
                         <Bot size={12} className="text-white" />
                       </div>
                       <span className="text-sm font-medium text-gray-700">Assistant</span>
@@ -615,14 +632,16 @@ function ChatPage() {
                   <div className={`px-4 py-3 rounded-2xl ${
                     msg.sender === "bot" 
                       ? "bg-gray-100 text-gray-800" 
-                      : "bg-blue-600 text-white"
+                      : "bg-purple-600 text-white"
                   }`}>
-                    <div className="whitespace-pre-wrap break-words">{msg.text}</div>
+                    <div className="prose prose-sm max-w-none text-gray-800">
+  <ReactMarkdown>{msg.text}</ReactMarkdown>
+</div>
                   </div>
                   
                   {msg.timestamp && (
                     <div className={`text-xs mt-1 px-1 ${
-                      msg.sender === "bot" ? "text-gray-500" : "text-blue-600"
+                      msg.sender === "bot" ? "text-gray-500" : "text-purple-600"
                     }`}>
                       {msg.timestamp}
                     </div>
@@ -634,7 +653,7 @@ function ChatPage() {
             {loading && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-purple-500 flex items-center justify-center">
                     <Bot size={12} className="text-white" />
                   </div>
                   <span className="text-sm font-medium text-gray-700">Assistant</span>
@@ -665,7 +684,7 @@ function ChatPage() {
                   : backendStatus === "offline"
                     ? "Simulated mode - Backend offline. Type your question..."
                     : "Message RAG Assistant..."}
-                className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none bg-white"
+                className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none resize-none bg-white"
                 rows="2"
                 disabled={documents.length === 0}
               />
@@ -673,7 +692,7 @@ function ChatPage() {
               <button 
                 onClick={sendMessage}
                 disabled={!input.trim() || loading || documents.length === 0}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Send size={18} />
               </button>

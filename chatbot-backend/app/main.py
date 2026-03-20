@@ -142,12 +142,36 @@ def ask_groq(prompt: str, context: str = ""):
     if not groq_client:
         return "Groq API not configured."
 
-    full_prompt = f"Context:\n{context[:3000]}\n\nQuestion: {prompt}"
+    full_prompt = f"""
+You are a professional AI assistant.
+
+Give the answer in a CLEAN and STRICT format.
+
+FOLLOW THESE RULES STRICTLY:
+
+1. First line → Title
+2. Leave ONE blank line after title
+3. Divide answer into sections
+4. Each section must have a heading
+5. Leave ONE blank line after each heading
+6. Use ONLY bullet points (•)
+7. Each bullet must be short (max 2 lines)
+8. Leave ONE blank line between every bullet
+9. DO NOT write long paragraphs
+10. DO NOT use HTML tags like <br>
+11. DO NOT use tables, |, ---, or markdown symbols
+12. Output must look clean and spaced like ChatGPT
+
+Context:
+{context[:3000]}
+Question:
+{prompt}
+"""
 
     res = groq_client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=[{"role": "user", "content": full_prompt}],
-        temperature=0.3,
+        temperature=0.2,
         max_tokens=500
     )
 
