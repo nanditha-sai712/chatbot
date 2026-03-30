@@ -125,7 +125,7 @@ def serialize(doc):
 # ============================
 # PDF EXTRACTION (better than PyPDF2)
 # ============================
-
+#groq call
 def extract_text_from_pdf(file: UploadFile):
     text = ""
     with pdfplumber.open(file.file) as pdf:
@@ -134,36 +134,50 @@ def extract_text_from_pdf(file: UploadFile):
     return text[:10000]
 
 
-# ============================
-# GROQ CALL
-# ============================
-
 def ask_groq(prompt: str, context: str = ""):
     if not groq_client:
         return "Groq API not configured."
 
-    full_prompt = f"""
+    # 🧠 DETECT MIND MAP
+    is_mind_map = "mind map" in prompt.lower()
+
+    if is_mind_map:
+        full_prompt = f"""
+You are a strict mind map generator.
+
+FOLLOW THESE RULES VERY STRICTLY:
+
+1. Output ONLY tree structure
+2. NEVER use bullet points (•)
+3. NEVER write paragraphs
+4. NEVER explain anything
+5. Use ONLY these symbols: ├── └── │
+6. Maintain proper indentation
+
+EXAMPLE:
+
+Machine Learning
+├── Definition
+│   ├── Learns from data
+│   └── Improves with experience
+├── Types
+│   ├── Supervised
+│   ├── Unsupervised
+│   └── Reinforcement
+
+NOW CONVERT THIS INTO SAME FORMAT:
+
+{prompt}
+"""
+    else:
+        full_prompt = f"""
 You are a professional AI assistant.
 
-Give the answer in a CLEAN and STRICT format.
-
-FOLLOW THESE RULES STRICTLY:
-
-1. First line → Title
-2. Leave ONE blank line after title
-3. Divide answer into sections
-4. Each section must have a heading
-5. Leave ONE blank line after each heading
-6. Use ONLY bullet points (•)
-7. Each bullet must be short (max 2 lines)
-8. Leave ONE blank line between every bullet
-9. DO NOT write long paragraphs
-10. DO NOT use HTML tags like <br>
-11. DO NOT use tables, |, ---, or markdown symbols
-12. Output must look clean and spaced like ChatGPT
+Give the answer in a CLEAN and WELL STRUCTURED format.
 
 Context:
 {context[:3000]}
+
 Question:
 {prompt}
 """
@@ -176,7 +190,6 @@ Question:
     )
 
     return res.choices[0].message.content
-
 
 # ============================
 # ROUTES
@@ -298,7 +311,10 @@ def chat(chat: ChatRequest):
         "timestamp": datetime.now()
     })
 
-    return {"answer": answer}
+    return {
+    "answer": answer,
+    "source": context[:300]
+}
 
 # ============================
 # ⭐ CHAT HISTORY (REQUIRED for React)

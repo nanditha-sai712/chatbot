@@ -26,16 +26,10 @@ function Login() {
     setError('');
 
     try {
-      // Call your backend API
       const response = await fetch('https://chatbot-eo65.onrender.com/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
@@ -44,157 +38,120 @@ function Login() {
         throw new Error(data.detail || 'Login failed');
       }
 
-      // Store user data in localStorage
       localStorage.setItem('user', JSON.stringify(data));
-
-      // Redirect to dashboard/chat page
       navigate('/chat');
 
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
- 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-purple-50">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <Header />
       
-      <main className="py-8">
+      <main className="py-10">
         <div className="container mx-auto px-4">
           <div className="max-w-md mx-auto">
+
+            {/* Title */}
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
-                <LogIn className="h-8 w-8 text-purple-600" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-yellow-100 rounded-full mb-4">
+                <LogIn className="h-8 w-8 text-yellow-500" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+
+              <h1 className="text-3xl font-bold text-[#0F172A] mb-2">
                 Login to RAG Chatbot
               </h1>
-              <p className="text-gray-600">
+
+              <p className="text-gray-500">
                 Access your documents and start chatting
               </p>
             </div>
 
-            {/* Login Form */}
-            <div className="bg-white rounded-xl shadow-lg p-6 md:p-8">
+            {/* Form */}
+            <div className="bg-white border rounded-xl shadow-sm p-6 md:p-8">
+
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Email Input */}
+
+                {/* Email */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="text-sm font-medium text-gray-700 mb-2">
                     Email Address
                   </label>
+
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-white/60" />
-                    </div>
+                    <Mail className="absolute left-3 top-3 text-gray-400" />
+
                     <input
                       type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-yellow-400 outline-none"
                       placeholder="Enter your email"
                     />
                   </div>
                 </div>
 
-                {/* Password Input */}
+                {/* Password */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="text-sm font-medium text-gray-700 mb-2">
                     Password
                   </label>
+
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-white/60" />
-                    </div>
+                    <Lock className="absolute left-3 top-3 text-gray-400" />
+
                     <input
                       type="password"
                       name="password"
                       value={formData.password}
                       onChange={handleChange}
                       required
-                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-colors"
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-yellow-400 outline-none"
                       placeholder="Enter your password"
                     />
                   </div>
                 </div>
 
-                {/* Error Message */}
+                {/* Error */}
                 {error && (
-                  <div className="flex items-center space-x-2 text-red-600 bg-red-50 p-4 rounded-lg">
-                    <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                  <div className="flex items-center space-x-2 text-red-600 bg-red-50 p-3 rounded-lg">
+                    <AlertCircle className="h-5 w-5" />
                     <span className="text-sm">{error}</span>
                   </div>
                 )}
 
-                
-
-                {/* Submit Button */}
+                {/* Button */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  className="w-full bg-yellow-400 text-black py-3 rounded-lg font-medium hover:bg-yellow-300 transition"
                 >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Logging in...</span>
-                    </>
-                  ) : (
-                    <>
-                      <LogIn className="h-5 w-5" />
-                      <span>Login</span>
-                    </>
-                  )}
+                  {loading ? "Logging in..." : "Login"}
                 </button>
 
                 {/* Register Link */}
                 <div className="text-center pt-4 border-t border-gray-200">
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-gray-500 text-sm">
                     Don't have an account?{' '}
                     <Link 
                       to="/register" 
-                      className="text-purple-600 hover:text-purple-700 font-medium"
+                      className="text-yellow-500 hover:underline"
                     >
                       Create Account
                     </Link>
                   </p>
                 </div>
+
               </form>
 
-              {/* API Test Note */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Note:</span> This connects to your FastAPI backend at{' '}
-                  <code className="bg-gray-100 px-2 py-1 rounded text-xs">https://chatbot-eo65.onrender.com/login</code>
-                </p>
-              </div>
             </div>
 
-            {/* Project Info */}
-            <div className="mt-8 text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Student Project - RAG Chatbot</h3>
-              <p className="text-sm text-gray-600">
-                Full-stack application with React frontend and FastAPI backend
-              </p>
-              <div className="flex flex-wrap justify-center gap-2 mt-3">
-                <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
-                  React
-                </span>
-                <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                  FastAPI
-                </span>
-                <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
-                  MongoDB
-                </span>
-                <span className="px-3 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
-                  Groq AI
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </main>

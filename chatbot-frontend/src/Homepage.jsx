@@ -6,7 +6,6 @@ import {
   Upload, 
   MessageSquare,
   Shield,
-  Zap,
   Brain,
   Code,
   GraduationCap,
@@ -16,36 +15,37 @@ import {
 import { Link } from 'react-router-dom';
 
 function HomePage() {
+
   const features = [
     {
       icon: <Brain className="h-10 w-10" />,
       title: "RAG Architecture",
-      description: "Retrieval-Augmented Generation for accurate document-based responses"
+      description: "Accurate document-based answers using AI"
     },
     {
       icon: <FileText className="h-10 w-10" />,
-      title: "PDF Document Processing",
-      description: "Upload and extract text from PDF documents for intelligent Q&A"
+      title: "PDF Processing",
+      description: "Upload & extract text from PDFs"
     },
     {
       icon: <Database className="h-10 w-10" />,
       title: "MongoDB Storage",
-      description: "User data and document content securely stored in MongoDB database"
+      description: "Secure document & user data storage"
     },
     {
       icon: <Cpu className="h-10 w-10" />,
-      title: "Groq AI Integration",
-      description: "Fast inference using Groq's LLM for intelligent responses"
+      title: "Fast AI",
+      description: "Powered by Groq for quick responses"
     },
     {
       icon: <Shield className="h-10 w-10" />,
-      title: "User Authentication",
-      description: "Secure login and registration system for personalized experience"
+      title: "Authentication",
+      description: "Secure login & user system"
     },
     {
       icon: <Code className="h-10 w-10" />,
-      title: "Full-Stack Project",
-      description: "Built with React frontend and FastAPI backend - complete web application"
+      title: "Full Stack",
+      description: "React + FastAPI complete project"
     }
   ];
 
@@ -54,150 +54,120 @@ function HomePage() {
       number: "01",
       icon: <Upload className="h-8 w-8" />,
       title: "Upload PDF",
-      description: "Register/Login and upload your PDF documents"
+      description: "Upload your document"
     },
     {
       number: "02",
       icon: <Brain className="h-8 w-8" />,
       title: "AI Processing",
-      description: "Text extraction and processing by RAG system"
+      description: "RAG processes content"
     },
     {
       number: "03",
       icon: <MessageSquare className="h-8 w-8" />,
-      title: "Chat & Learn",
-      description: "Ask questions and get answers from your documents"
+      title: "Ask Questions",
+      description: "Chat with your data"
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <Header />
-      
-      {/* Hero Section - Simplified */}
+
       <main>
-        <section className="relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-50">
-          <div className="container mx-auto px-4 py-16">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="inline-flex items-center space-x-2 bg-white border border-purple-200 text-purple-800 px-4 py-2 rounded-full mb-6 shadow-sm">
-                <GraduationCap className="h-5 w-5" />
-                <span className="font-medium">Academic Project - RAG Chatbot</span>
-              </div>
-              
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                Document Q&A Chatbot
-                <span className="block text-purple-600 mt-2">with RAG Architecture</span>
-              </h1>
-              
-              <p className="text-lg text-gray-700 mb-8 max-w-2xl mx-auto">
-                A full-stack web application that allows users to upload PDF documents and chat with them using Retrieval-Augmented Generation (RAG) technology.
-                Built as an academic project demonstrating modern web development and AI integration.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link 
-                  to="/login" 
-                  className="bg-gradient-to-r from-purple-600 to-pink-500 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-pink-300 transition flex items-center justify-center space-x-2"
-                >
-                  <MessageSquare className="h-5 w-5" />
-                  <span>Try the Chatbot</span>
-                </Link>
-                <Link 
-                  to="/about" 
-                  className="border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium hover:border-purple-400 hover:text-purple-600 transition-colors duration-300"
-                >
-                  Learn More
-                </Link>
-              </div>
+
+        {/* HERO */}
+        <section className="py-20 text-center px-6">
+          <div className="max-w-4xl mx-auto">
+
+            <div className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full mb-6">
+              <GraduationCap className="h-5 w-5" />
+              Academic Project - RAG Chatbot
             </div>
+
+            <h1 className="text-4xl md:text-5xl font-bold text-[#0F172A]">
+              AI-Powered Chatbot
+              <span className="block text-black-500 mt-2">
+                For Document Q&A
+              </span>
+            </h1>
+
+            <p className="text-gray-500 mt-6 max-w-2xl mx-auto">
+              Upload PDFs, ask questions, and get accurate answers instantly using AI.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
+              <Link 
+                to="/login"
+                className="px-6 py-3 bg-yellow-400 text-black rounded-lg font-medium hover:bg-yellow-300"
+              >
+                Try Chatbot
+              </Link>
+
+              <Link 
+                to="/about"
+                className="px-6 py-3 border border-gray-300 rounded-lg hover:border-yellow-400 hover:text-yellow-500"
+              >
+                Learn More
+              </Link>
+            </div>
+
           </div>
         </section>
 
-        {/* Project Overview */}
-        <section className="py-12 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-3">Project Overview</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
-                This project demonstrates the implementation of a RAG-based document chatbot using modern web technologies
-              </p>
-            </div>
-            
-            <div className="max-w-4xl mx-auto bg-purple-50 border border-purple-100 rounded-xl p-6 mb-8">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                <Code className="h-5 w-5 mr-2 text-purple-600" />
-                Key Objectives
-              </h3>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 text-gray-700">
-                <li className="flex items-center">
-                  <div className="h-2 w-2 bg-purple-500 rounded-full mr-3"></div>
-                  Implement RAG architecture for document-based Q&A
-                </li>
-                <li className="flex items-center">
-                  <div className="h-2 w-2 bg-purple-500 rounded-full mr-3"></div>
-                  Build full-stack web application with user authentication
-                </li>
-                <li className="flex items-center">
-                  <div className="h-2 w-2 bg-purple-500 rounded-full mr-3"></div>
-                  Integrate Groq AI for fast inference
-                </li>
-                <li className="flex items-center">
-                  <div className="h-2 w-2 bg-purple-500 rounded-full mr-3"></div>
-                  Demonstrate MongoDB for data persistence
-                </li>
-              </ul>
-            </div>
+        {/* HOW IT WORKS */}
+        <section className="py-16 bg-white">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-[#0F172A]">How It Works</h2>
           </div>
-        </section>
 
-        {/* How It Works - Simplified */}
-        <section className="py-12 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">How It Works</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              {steps.map((step, index) => (
-                <div key={index} className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-                  <div className="flex items-center mb-4">
-                    <div className="text-2xl font-bold text-purple-600 mr-3">{step.number}</div>
-                    <div className="text-purple-600">{step.icon}</div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{step.title}</h3>
-                  <p className="text-gray-600">{step.description}</p>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto px-6">
+            {steps.map((step, index) => (
+              <div key={index} className="bg-[#F8FAFC] p-6 rounded-xl border">
+                <div className="flex items-center mb-3">
+                  <span className="text-yellow-500 font-bold mr-2">{step.number}</span>
+                  <div className="text-yellow-500">{step.icon}</div>
                 </div>
-              ))}
-            </div>
+                <h3 className="font-semibold text-gray-900">{step.title}</h3>
+                <p className="text-sm text-gray-500">{step.description}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* Features - Academic Focus */}
-        <section className="py-12 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Technical Features</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.map((feature, index) => (
-                <div 
-                  key={index} 
-                  className="bg-gray-50 p-6 rounded-lg border border-gray-200 hover:border-purple-300 transition-colors duration-300"
-                >
-                  <div className="text-purple-600 mb-4">{feature.icon}</div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                  <p className="text-gray-600 text-sm">{feature.description}</p>
-                </div>
-              ))}
-            </div>
+        {/* FEATURES */}
+        <section className="py-16 px-6">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-[#0F172A]">
+              Technical Features
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {features.map((feature, index) => (
+              <div key={index} className="bg-white p-6 rounded-xl border hover:shadow-md transition">
+                <div className="text-yellow-500 mb-3">{feature.icon}</div>
+                <h3 className="font-semibold text-gray-900">{feature.title}</h3>
+                <p className="text-sm text-gray-500">{feature.description}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* Technology Stack */}
-        
-        {/* Project Demo CTA */}
-        
+        {/* CTA */}
+        <section className="py-16 text-center">
+          <h2 className="text-xl font-semibold mb-3">
+            Ready to try DocuChat?
+          </h2>
+
+          <Link 
+            to="/register"
+            className="px-6 py-3 bg-yellow-400 text-black rounded-lg hover:bg-yellow-300"
+          >
+            Create Account
+          </Link>
+        </section>
+
       </main>
 
       <Footer />

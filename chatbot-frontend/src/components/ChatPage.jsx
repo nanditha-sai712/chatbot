@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+
+
 import { 
   Send, 
   Plus, 
@@ -13,7 +15,8 @@ import {
   Edit,
   X,
   Menu,
-  AlertCircle
+  AlertCircle,
+  Copy
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -33,6 +36,10 @@ function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [uploadError, setUploadError] = useState("");
   const [backendStatus, setBackendStatus] = useState("checking"); // checking, online, offline
+  const [openSettings, setOpenSettings] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
+const [showSettings, setShowSettings] = useState(false);
   
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -102,7 +109,7 @@ function ChatPage() {
     }
   }, [navigate]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom  
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -223,7 +230,44 @@ function ChatPage() {
     }
   };
 
-  // Send message with improved response handling
+const generateMindMap = async (text) => {
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    const res = await fetch("https://chatbot-eo65.onrender.com/chat/ai", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: user.user_id,
+        document_id: documents[0]?.id,
+        message: "Convert this into a mind map:\n\n" + text,
+      }),
+    });
+
+    const data = await res.json();
+
+    console.log("MindMap:", data); // debug
+
+    const newMsg = {
+      id: Date.now(),
+      sender: "bot",
+      text: data.answer || "No mind map generated",
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    setMessages((prev) => [...prev, newMsg]);
+  } catch (err) {
+    console.error("MindMap error:", err);
+  }
+};
+
+
+// Send message with improved response handling
   const sendMessage = async () => {
     if (!input.trim()) return;
     
@@ -241,6 +285,10 @@ function ChatPage() {
       triggerFileInput();
       return;
     }
+    
+      
+
+
     
     // Add user message
     const userMsg = {
@@ -335,6 +383,7 @@ aiResponse = aiResponse
           id: Date.now() + 1,
           sender: "bot",
           text: aiResponse,
+          source: data.source || "",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         
@@ -401,6 +450,10 @@ aiResponse = aiResponse
       return { username: "User", email: "" };
     }
   };
+  const handleLogout = () => {
+  localStorage.removeItem("user");
+  navigate("/login");
+};
 
   const user = getCurrentUser();
 
@@ -408,13 +461,12 @@ aiResponse = aiResponse
     <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Left Sidebar */}
       {sidebarOpen && (
-        <div className="w-64 bg-gradient-to-b from-purple-900 via-purple-800 to-pink-700 text-white flex flex-col h-full border-r border-purple-700">
+        <div className="w-64 bg-white text-gray-800 flex flex-col h-full border-r border-gray-200">
           {/* New Chat Button */}
           <div className="p-3 border-b border-gray-800">
             <button 
               onClick={startNewChat}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 hover:bg-white/20 rounded-lg transition-all"
-            >
+className="w-full flex items-center gap-2 px-3 py-2 bg-white hover:bg-yellow-100 text-black border border-yellow-200 rounded-lg text-sm mt-2"            >
               <Plus size={18} />
               <span className="font-medium">New Chat</span>
             </button>
@@ -422,19 +474,19 @@ aiResponse = aiResponse
 
           {/* Chat History */}
           <div className="flex-1 overflow-y-auto p-2">
-            <div className="text-xs font-medium text-white/60 px-3 py-2">Recent Chats</div>
+            <div className="text-xs font-medium text-gray-500 px-3 py-2">Recent Chats</div>
             <div className="space-y-1">
               {[
                 { id: 1, title: "New Chat", date: "Today", active: true },
-                { id: 2, title: "Research Paper", date: "Yesterday", active: false },
-                { id: 3, title: "Document Q&A", date: "Jan 15", active: false },
+                { id: 2, title: "Research Paper", date: "Yesterday", active: true },
+                { id: 3, title: "Document Q&A", date: "Jan 15", active: true },
               ].map(chat => (
                 <button
                   key={chat.id}
                   className={`w-full text-left px-3 py-3 rounded-lg flex items-center justify-between group ${
                     chat.active 
-                      ? "bg-gray-800" 
-                      : "hover:bg-white/10"
+  ? "bg-yellow-400 text-black" 
+  : "bg-white hover:bg-yellow-100  border-yellow-200"
                   }`}
                   onClick={startNewChat}
                 >
@@ -443,8 +495,8 @@ aiResponse = aiResponse
                     <span className="text-sm truncate">{chat.title}</span>
                   </div>
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100">
-                    <Edit size={14} className="text-white/60 hover:text-white" />
-                    <Trash2 size={14} className="text-white/60 hover:text-white" />
+                    <Edit size={14} className="text-gray-500 hover:text-white" />
+                    <Trash2 size={14} className="text-gray-500 hover:text-white" />
                   </div>
                 </button>
               ))}
@@ -452,18 +504,17 @@ aiResponse = aiResponse
 
             {/* Documents Section */}
             <div className="mt-6">
-              <div className="text-xs font-medium text-white/60 px-3 py-2">Documents</div>
+              <div className="text-xs font-medium text-gray-500 px-3 py-2">Documents</div>
               <div className="space-y-1">
                 {documents.map(doc => (
                   <div 
                     key={doc.id}
-                    className="flex items-center justify-between px-3 py-2 hover:bg-gray-800 rounded-lg group"
-                  >
+className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-100 text-black border border-yellow-200 rounded-lg group"                  >
                     <div className="flex items-center gap-2">
-                      <FileText size={14} className="text-white/60" />
+                      <FileText size={14} className="text-yellow-400" />
                       <div className="flex flex-col">
                         <span className="text-sm truncate max-w-[150px]">{doc.name}</span>
-                        <span className="text-xs text-white/60">{doc.size} • {doc.date}</span>
+                        <span className="text-xs text-gray-500">{doc.size} • {doc.date}</span>
                         {doc.simulated && (
                           <span className="text-xs text-yellow-400">Simulated</span>
                         )}
@@ -471,7 +522,7 @@ aiResponse = aiResponse
                     </div>
                     <button 
                       onClick={(e) => deleteDocument(doc.id, e)}
-                      className="p-1 text-white/60 hover:text-white opacity-0 group-hover:opacity-100"
+                      className="p-1 text-gray-500 hover:text-white opacity-0 group-hover:opacity-100"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -480,8 +531,7 @@ aiResponse = aiResponse
                 
                 <button 
                   onClick={triggerFileInput}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-white/60 hover:text-white hover:bg-gray-800 rounded-lg text-sm mt-2"
-                >
+       className="flex items-center justify-between px-3 py-2 bg-yellow hover:bg-yellow-100 text-black border border-yellow-200 rounded-lg group"         >
                   <Upload size={14} />
                   <span>Upload document</span>
                 </button>
@@ -491,15 +541,42 @@ aiResponse = aiResponse
 
           {/* User Section */}
           <div className="p-3 border-t border-gray-800">
-            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800">
-              <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-yellow-100 text-black">
+              <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center">
                 <User size={16} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{user.username}</div>
-                <div className="text-xs text-white/60 truncate">{user.email}</div>
+                <div className="text-xs text-gray-500 truncate">{user.email}</div>
               </div>
-              <Settings size={16} className="text-white/60 hover:text-white" />
+              <div className="relative">
+  <Settings 
+    size={16} 
+    className="text-gray-500 hover:text-black cursor-pointer"
+    onClick={() => setOpenSettings(!openSettings)}
+  />
+
+  {openSettings && (
+    <div className="absolute bottom-10 right-0 bg-white shadow-lg rounded-lg p-2 w-40 border z-50">
+      
+      <div className="p-2 hover:bg-gray-100 cursor-pointer text-sm">
+        👤 Profile
+      </div>
+
+      <div className="p-2 hover:bg-gray-100 cursor-pointer text-sm">
+        ⚙️ Settings
+      </div>
+
+      <div 
+        onClick={handleLogout}
+        className="p-2 hover:bg-red-100 text-red-500 cursor-pointer text-sm"
+      >
+        🚪 Logout
+      </div>
+
+    </div>
+  )}
+</div>
             </div>
           </div>
         </div>
@@ -519,7 +596,7 @@ aiResponse = aiResponse
           )}
           
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-purple-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center">
               <Bot size={18} className="text-white" />
             </div>
             <span className="font-medium">RAG Document Assistant</span>
@@ -566,8 +643,8 @@ aiResponse = aiResponse
             {/* Welcome message when no messages */}
             {messages.length === 1 && messages[0].sender === "bot" && (
               <div className="text-center py-12">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-100 to-purple-100 flex items-center justify-center mx-auto mb-6">
-                  <Bot size={32} className="text-purple-600" />
+                <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-6">
+                  <Bot size={32} className="text-yellow-500" />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">RAG Document Chatbot</h1>
                 <p className="text-gray-600 text-lg mb-8 max-w-xl mx-auto">
@@ -597,12 +674,12 @@ aiResponse = aiResponse
                 <div className="max-w-md mx-auto">
                   <div 
                     onClick={triggerFileInput}
-                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-500 transition-colors cursor-pointer bg-white hover:bg-purple-50"
+                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-yellow-500 transition-colors cursor-pointer bg-white hover:bg-yellow-50"
                   >
-                    <Upload className="h-12 w-12 text-white/60 mx-auto mb-4" />
+                    <Upload className="h-12 w-12 text-gray-500 mx-auto mb-4" />
                     <p className="text-gray-700 font-medium mb-2">Upload PDF Document</p>
                     <p className="text-gray-500 text-sm">Click to browse or drag & drop</p>
-                    <p className="text-xs text-white/60 mt-2">Max file size: 10MB</p>
+                    <p className="text-xs text-gray-500 mt-2">Max file size: 10MB</p>
                   </div>
                   {uploadError && (
                     <div className="mt-3 text-red-500 text-sm bg-red-50 p-2 rounded">
@@ -622,7 +699,7 @@ aiResponse = aiResponse
                 <div className={`inline-block max-w-[80%] ${msg.sender === "user" ? "text-right" : ""}`}>
                   {msg.sender === "bot" && (
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-purple-500 flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center">
                         <Bot size={12} className="text-white" />
                       </div>
                       <span className="text-sm font-medium text-gray-700">Assistant</span>
@@ -632,16 +709,65 @@ aiResponse = aiResponse
                   <div className={`px-4 py-3 rounded-2xl ${
                     msg.sender === "bot" 
                       ? "bg-gray-100 text-gray-800" 
-                      : "bg-purple-600 text-white"
+                      : "bg-yellow-400 text-black"
                   }`}>
-                    <div className="prose prose-sm max-w-none text-gray-800">
+                    <div className="prose prose-sm max-w-none text-gray-800 text-left">
   <ReactMarkdown>{msg.text}</ReactMarkdown>
 </div>
                   </div>
+
+{/* ✅ SOURCE DISPLAY */}
+{msg.sender === "bot" && msg.source && (
+  <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+    📄 Source: {msg.source}
+  </div>
+)}
+{/* COPY BUTTON */}
+{/* COPY BUTTON */}
+{msg.sender === "bot" && (
+  <button
+    onClick={() => {
+      const cleanText = msg.text
+        .replace(/\*\*/g, "")          // remove bold
+        .replace(/#/g, "")             // remove headings
+        .replace(/`/g, "")             // remove backticks
+        .replace(/•/g, "\n• ")         // fix bullet spacing
+        .replace(/\.\s+/g, ".\n")      // new line after sentences
+        .replace(/\n{2,}/g, "\n\n")    // clean spacing
+        .trim();
+
+      navigator.clipboard.writeText(cleanText);
+
+      setCopiedId(msg.id);
+      setTimeout(() => setCopiedId(null), 1200);
+    }}
+    className="flex items-center gap-1 text-xs mt-1 text-gray-500 hover:text-black cursor-pointer"
+  >
+    <Copy size={14} />
+    {copiedId === msg.id && (
+      <span className="text-green-500">Copied</span>
+    )}
+  </button>
+)}
+{/* generating mind map  */}
+
+{msg.sender === "bot" && (
+  <button
+    onClick={() => generateMindMap(msg.text)}
+    className="text-xs mt-1 text-purple-600 hover:text-purple-800 cursor-pointer"
+  >
+    🧠 Mind Map
+  </button>
+)}
+
+
+
+
+
                   
                   {msg.timestamp && (
                     <div className={`text-xs mt-1 px-1 ${
-                      msg.sender === "bot" ? "text-gray-500" : "text-purple-600"
+                      msg.sender === "bot" ? "text-gray-500" : "text-gray-500"
                     }`}>
                       {msg.timestamp}
                     </div>
@@ -653,14 +779,14 @@ aiResponse = aiResponse
             {loading && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-purple-500 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center">
                     <Bot size={12} className="text-white" />
                   </div>
                   <span className="text-sm font-medium text-gray-700">Assistant</span>
                 </div>
                 <div className="px-4 py-3 bg-gray-100 rounded-2xl inline-block">
                   <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
                     <span className="text-gray-700">Thinking...</span>
                   </div>
                 </div>
@@ -684,18 +810,18 @@ aiResponse = aiResponse
                   : backendStatus === "offline"
                     ? "Simulated mode - Backend offline. Type your question..."
                     : "Message RAG Assistant..."}
-                className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none resize-none bg-white"
+                className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none resize-none bg-white"
                 rows="2"
                 disabled={documents.length === 0}
               />
               
               <button 
-                onClick={sendMessage}
-                disabled={!input.trim() || loading || documents.length === 0}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send size={18} />
-              </button>
+  onClick={sendMessage}
+  disabled={!input.trim() || loading || documents.length === 0}
+  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 bg-yellow-400 text-black rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+>
+  <Send size={18} className="text-black" />
+</button>
             </div>
             
             {/* Upload button in input area */}
@@ -709,7 +835,7 @@ aiResponse = aiResponse
                   <Upload size={14} />
                   <span>Upload PDF</span>
                   {loading && (
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-400"></div>
                   )}
                 </button>
                 

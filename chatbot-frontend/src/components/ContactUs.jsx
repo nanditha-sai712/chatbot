@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Mail, Send, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Header from './Header';
+import Footer from './Footer';
 
 function ContactUs() {
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -33,78 +35,69 @@ function ContactUs() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <Header />
 
-      <main className="px-4 py-12">
+      <main className="flex-1 px-6 py-16">
 
-        {/* Top Section */}
-        <div className="max-w-4xl mx-auto text-center mb-10">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
+        <div className="max-w-3xl mx-auto text-center mb-10">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#0F172A] mb-3">
             Contact Us
           </h1>
-          <p className="text-gray-600">
-            Have questions about DocuChat AI? Send us a message.
+          <p className="text-gray-500">
+            Have questions? We'd love to hear from you.
           </p>
         </div>
 
-        {/* Main Card */}
-        <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
+        <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl border shadow-sm">
 
-          {/* Email Info */}
-          <div className="flex items-center justify-center mb-6 text-purple-600">
-            <Mail className="h-5 w-5 mr-2" />
+          <div className="flex justify-center items-center gap-2 text-yellow-500 mb-6">
+            <Mail className="h-5 w-5" />
             <span className="font-medium">student@example.com</span>
           </div>
 
           {submitted ? (
-            <div className="text-center py-8">
-              <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-3" />
-              <p className="text-gray-700 text-lg">
-                Message sent successfully!
-              </p>
+            <div className="text-center py-10">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+              <p className="text-lg text-gray-700">Message sent successfully!</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
 
-              {/* Name */}
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                required
                 placeholder="Your Name"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-yellow-400 outline-none"
               />
 
-              {/* Email */}
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                required
                 placeholder="Your Email"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-yellow-400 outline-none"
               />
 
-              {/* Message */}
               <textarea
                 name="message"
                 value={formData.message}
                 onChange={handleChange}
-                required
                 rows="4"
                 placeholder="Your Message"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none resize-none"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-yellow-400 outline-none resize-none"
               />
 
-              {/* Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-purple-600 text-white py-3 rounded-xl hover:bg-purple-700 transition flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-yellow-400 text-black flex justify-center items-center gap-2 hover:bg-yellow-300 transition"
               >
                 {loading ? "Sending..." : (
                   <>
@@ -119,8 +112,7 @@ function ContactUs() {
 
         </div>
 
-        {/* Bottom Buttons */}
-        <div className="flex gap-4 justify-center mt-8">
+        <div className="flex gap-4 justify-center mt-10">
           <Link
             to="/"
             className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition"
@@ -130,13 +122,15 @@ function ContactUs() {
 
           <Link
             to="/chat"
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+            className="px-6 py-2 bg-yellow-400 text-black rounded-lg hover:bg-yellow-300 transition"
           >
             Go to Chat
           </Link>
         </div>
 
       </main>
+
+      <Footer />
     </div>
   );
 }
