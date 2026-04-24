@@ -16,6 +16,8 @@ from groq import Groq
 from dotenv import load_dotenv
 import pdfplumber
 import bcrypt
+from docx import Document as DocxDocument
+from pptx import Presentation
 
 # ============================
 # LOAD ENV
@@ -123,15 +125,82 @@ def serialize(doc):
 
 
 # ============================
-# PDF EXTRACTION (better than PyPDF2)
+# DOCUMENT EXTRACTION (PDF / DOCX / PPTX / TXT)
 # ============================
-#groq call
-def extract_text_from_pdf(file: UploadFile):
+
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".pptx", ".txt"}
+
+
+def _ext(filename: str) -> str:
+    return os.path.splitext(filename or "")[1].lower()
+
+
+def extract_text_from_pdf(file: UploadFile) -> str:
     text = ""
     with pdfplumber.open(file.file) as pdf:
         for page in pdf.pages:
-            text += page.extract_text() or ""
-    return text[:10000]
+            text += (page.extract_text() or "") + "\n"
+    return text
+
+
+def extract_text_from_docx(file: UploadFile) -> str:
+    data = file.file.read()
+    doc = DocxDocument(io.BytesIO(data))
+    parts = [p.text for p in doc.paragraphs if p.text]
+    for table in doc.tables:
+        for row in table.rows:
+            cells = [c.text.strip() for c in row.cells if c.text]
+            if cells:
+                parts.append(" | ".join(cells))
+    return "\n".join(parts)
+
+
+def extract_text_from_pptx(file: UploadFile) -> str:
+    data = file.file.read()
+    prs = Presentation(io.BytesIO(data))
+    parts = []
+    for idx, slide in enumerate(prs.slides, start=1):
+        parts.append(f"\n--- Slide {idx} ---")
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    line = "".join(run.text for run in para.runs).strip()
+                    if line:
+                        parts.append(line)
+    return "\n".join(parts)
+
+
+def extract_text_from_txt(file: UploadFile) -> str:
+    data = file.file.read()
+    for enc in ("utf-8", "utf-16", "latin-1"):
+        try:
+            return data.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", errors="ignore")
+
+
+def extract_text_from_file(file: UploadFile) -> str:
+    ext = _ext(file.filename)
+    if ext == ".pdf":
+        text = extract_text_from_pdf(file)
+    elif ext == ".docx":
+        text = extract_text_from_docx(file)
+    elif ext == ".pptx":
+        text = extract_text_from_pptx(file)
+    elif ext == ".txt":
+        text = extract_text_from_txt(file)
+    elif ext in (".doc", ".ppt"):
+        raise HTTPException(
+            400,
+            f"Legacy {ext} format is not supported. Please save as {ext}x and retry.",
+        )
+    else:
+        raise HTTPException(
+            400,
+            f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
+        )
+    return (text or "").strip()[:10000]
 
 
 def ask_groq(prompt: str, context: str = ""):
@@ -171,15 +240,24 @@ NOW CONVERT THIS INTO SAME FORMAT:
 """
     else:
         full_prompt = f"""
-You are a professional AI assistant.
+You are a helpful AI assistant. Answer the question using ONLY the context.
 
-Give the answer in a CLEAN and WELL STRUCTURED format.
+STRICT OUTPUT RULES — follow exactly:
+- Reply in PLAIN TEXT only. No Markdown syntax at all.
+- Do NOT use tables, pipes (|), dashes as separators (---), or column layouts.
+- Do NOT use **, __, ##, backticks, HTML tags, or LaTeX (no \\rightarrow, \\alpha, $...$ etc.).
+- Write short paragraphs separated by a single blank line.
+- For lists, put each item on its own line starting with "- " (dash + space).
+- For sections, put a short plain-text title on its own line, then a blank line, then the content.
+- Keep it concise, well organized, and easy to read.
 
 Context:
 {context[:3000]}
 
 Question:
 {prompt}
+
+Answer (plain text only):
 """
 
     res = groq_client.chat.completions.create(
@@ -248,17 +326,25 @@ def login(user: UserLogin):
 
 
 # ============================
-# UPLOAD PDF
+# UPLOAD DOCUMENT (PDF / DOCX / PPTX / TXT)
 # ============================
 
-@app.post("/upload/pdf")
-async def upload_pdf(
-    file: UploadFile = File(...),
-    user_id: str = Form(...),
-    document_name: str = Form("Untitled")
+async def _handle_upload(
+    file: UploadFile,
+    user_id: str,
+    document_name: str,
 ):
+    ext = _ext(file.filename)
+    if ext not in SUPPORTED_EXTENSIONS and ext not in (".doc", ".ppt"):
+        raise HTTPException(
+            400,
+            f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
+        )
 
-    text = extract_text_from_pdf(file)
+    text = extract_text_from_file(file)
+
+    if not text:
+        raise HTTPException(400, "Could not extract any text from the file.")
 
     doc_id = str(uuid.uuid4())
 
@@ -266,16 +352,38 @@ async def upload_pdf(
         "_id": doc_id,
         "user_id": user_id,
         "name": document_name,
+        "file_type": ext.lstrip("."),
         "content": text,
-        "uploaded_at": datetime.now()
+        "uploaded_at": datetime.now(),
     })
 
     summary = ask_groq("Summarize this document briefly", text)
 
     return {
         "document_id": doc_id,
-        "summary": summary[:200]
+        "document_name": document_name,
+        "file_type": ext.lstrip("."),
+        "summary": summary[:200],
+        "message": "Document uploaded successfully",
     }
+
+
+@app.post("/upload/pdf")
+async def upload_pdf(
+    file: UploadFile = File(...),
+    user_id: str = Form(...),
+    document_name: str = Form("Untitled"),
+):
+    return await _handle_upload(file, user_id, document_name)
+
+
+@app.post("/upload/document")
+async def upload_document(
+    file: UploadFile = File(...),
+    user_id: str = Form(...),
+    document_name: str = Form("Untitled"),
+):
+    return await _handle_upload(file, user_id, document_name)
 
 
 # ============================

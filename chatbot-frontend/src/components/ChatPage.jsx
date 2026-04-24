@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
 
 
-import { 
-  Send, 
-  Plus, 
+import {
+  Send,
+  Plus,
   MessageSquare,
   FileText,
   Upload,
@@ -16,7 +15,8 @@ import {
   X,
   Menu,
   AlertCircle,
-  Copy
+  Copy,
+  Network
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -25,7 +25,7 @@ function ChatPage() {
     {
       id: 1,
       sender: "bot",
-      text: "Hello! I'm your RAG Document Assistant. Upload a PDF document and ask questions about it.",
+      text: "Hello! I'm your RAG Document Assistant. Upload a document (PDF, DOCX, PPTX, or TXT) and ask questions about it.",
       timestamp: "Just now",
     },
   ]);
@@ -39,7 +39,28 @@ function ChatPage() {
   const [openSettings, setOpenSettings] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
-const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [mindMapData, setMindMapData] = useState(null);
+  const [mindMapTitle, setMindMapTitle] = useState("");
+  const [profile, setProfile] = useState(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("user") || "{}");
+      return {
+        username: u.username || "User",
+        email: u.email || "",
+        avatar: u.avatar || "",
+      };
+    } catch {
+      return { username: "User", email: "", avatar: "" };
+    }
+  });
+  const [appSettings, setAppSettings] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("appSettings") || "{}");
+    } catch {
+      return {};
+    }
+  });
   
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -109,10 +130,11 @@ const [showSettings, setShowSettings] = useState(false);
     }
   }, [navigate]);
 
-  // Auto-scroll to bottom  
+  // Auto-scroll to bottom (gated by setting)
   useEffect(() => {
+    if (appSettings.autoScroll === false) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, appSettings.autoScroll]);
 
   // Handle PDF upload with better error handling
   const handleFileUpload = async (e) => {
@@ -122,12 +144,19 @@ const [showSettings, setShowSettings] = useState(false);
     // Reset file input so same file can be uploaded again
     e.target.value = null;
     
-    if (file.type !== "application/pdf") {
-      setUploadError("Please upload a PDF file");
-      setTimeout(() => setUploadError(""), 3000);
+    const allowedExtensions = [".pdf", ".docx", ".pptx", ".txt"];
+    const fileName = (file.name || "").toLowerCase();
+    const ext = fileName.slice(fileName.lastIndexOf("."));
+    if (!allowedExtensions.includes(ext)) {
+      if ([".doc", ".ppt"].includes(ext)) {
+        setUploadError(`Legacy ${ext} is not supported — please save as ${ext}x.`);
+      } else {
+        setUploadError("Supported formats: PDF, DOCX, PPTX, TXT");
+      }
+      setTimeout(() => setUploadError(""), 4000);
       return;
     }
-    
+
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       setUploadError("File size must be less than 10MB");
@@ -230,42 +259,8 @@ const [showSettings, setShowSettings] = useState(false);
     }
   };
 
-const generateMindMap = async (text) => {
-  try {
-    const user = JSON.parse(localStorage.getItem("user"));
 
-    const res = await fetch("https://chatbot-eo65.onrender.com/chat/ai", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        user_id: user.user_id,
-        document_id: documents[0]?.id,
-        message: "Convert this into a mind map:\n\n" + text,
-      }),
-    });
-
-    const data = await res.json();
-
-    console.log("MindMap:", data); // debug
-
-    const newMsg = {
-      id: Date.now(),
-      sender: "bot",
-      text: data.answer || "No mind map generated",
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    setMessages((prev) => [...prev, newMsg]);
-  } catch (err) {
-    console.error("MindMap error:", err);
-  }
-};
-
+//
 
 // Send message with improved response handling
   const sendMessage = async () => {
@@ -281,7 +276,7 @@ const generateMindMap = async (text) => {
     
     // Check if documents are uploaded
     if (documents.length === 0) {
-      alert("Please upload a PDF document first");
+      alert("Please upload a document first (PDF, DOCX, PPTX, or TXT)");
       triggerFileInput();
       return;
     }
@@ -363,20 +358,11 @@ const generateMindMap = async (text) => {
                  "I received your message but couldn't generate a proper response.";
 
 // ✅ CLEAN + ADD SPACING
-aiResponse = aiResponse
-  .replace(/#{1,6}\s*/g, '')         // remove headings ###
-  .replace(/\*\*/g, '')              // remove bold **
-  .replace(/`/g, '')                 // remove backticks
-  .replace(/\|/g, ' ')               // remove table pipes
-  .replace(/-{2,}/g, '')             // remove ---- lines
+aiResponse = cleanAIResponse(aiResponse);
 
-  // ⭐ ADD NICE SPACING
-  .replace(/\.\s+/g, '.\n\n')        // new line after sentences
-  .replace(/\n\s*\n/g, '\n\n')       // normalize spacing
-  .replace(/(\d+\.)\s*/g, '\n$1 ')   // spacing for numbered points
-  .replace(/:\s*/g, ':\n')           // break after headings like "Step:"
+ 
   
-  .trim();
+  
         
         // Add AI response
         const botMsg = {
@@ -422,7 +408,7 @@ aiResponse = aiResponse
     setMessages([{
       id: Date.now(),
       sender: "bot",
-      text: "Hello! I'm your RAG Document Assistant. Upload a PDF document and ask questions about it.",
+      text: "Hello! I'm your RAG Document Assistant. Upload a document (PDF, DOCX, PPTX, or TXT) and ask questions about it.",
       timestamp: "Just now"
     }]);
   };
@@ -451,11 +437,185 @@ aiResponse = aiResponse
     }
   };
   const handleLogout = () => {
-  localStorage.removeItem("user");
-  navigate("/login");
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
+
+  const saveProfile = (next) => {
+    const stored = (() => {
+      try { return JSON.parse(localStorage.getItem("user") || "{}"); }
+      catch { return {}; }
+    })();
+    const merged = { ...stored, ...next };
+    localStorage.setItem("user", JSON.stringify(merged));
+    setProfile({
+      username: merged.username || "User",
+      email: merged.email || "",
+      avatar: merged.avatar || "",
+    });
+  };
+
+  const saveSettings = (next) => {
+    const merged = { ...appSettings, ...next };
+    localStorage.setItem("appSettings", JSON.stringify(merged));
+    setAppSettings(merged);
+  };
+
+  const user = profile;
+
+const cleanAIResponse = (text) => {
+  if (!text) return "";
+  let out = text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?[a-zA-Z][^>]*>/g, "")
+    .replace(/\r\n/g, "\n");
+
+  // Strip markdown table separator lines like |---|---|
+  out = out.replace(/^\s*\|?[-:\s|]{3,}\|?\s*$/gm, "");
+  // Convert table rows (| a | b | c |) into bullet-style "a — b — c"
+  out = out.replace(/^\s*\|(.+)\|\s*$/gm, (_, row) =>
+    row
+      .split("|")
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .join(" — ")
+  );
+  // Any remaining stray pipes
+  out = out.replace(/\s*\|\s*/g, " ");
+
+  // Remove markdown emphasis but keep inner text
+  out = out
+    .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/(^|\s)\*(?!\s)([^*\n]+?)\*(?=\s|$|[.,;:!?])/g, "$1$2")
+    .replace(/(^|\s)_(?!\s)([^_\n]+?)_(?=\s|$|[.,;:!?])/g, "$1$2");
+
+  // Remove headings markers
+  out = out.replace(/^#{1,6}\s+/gm, "");
+
+  // Strip code fencing / inline code
+  out = out.replace(/```[\s\S]*?```/g, (m) => m.replace(/```/g, ""));
+  out = out.replace(/`+([^`]+)`+/g, "$1");
+
+  // Strip LaTeX commands and math delimiters
+  out = out.replace(/\$\$([\s\S]*?)\$\$/g, "$1");
+  out = out.replace(/\$([^$\n]+)\$/g, "$1");
+  out = out.replace(/\\[a-zA-Z]+(\{[^}]*\})?/g, "");
+  out = out.replace(/[{}]/g, "");
+
+  // Horizontal rules / divider-only lines
+  out = out.replace(/^\s*[-=_*]{3,}\s*$/gm, "");
+
+  // Normalize bullet markers to "- "
+  out = out.replace(/^[ \t]*[•●◦▪]\s*/gm, "- ");
+
+  // Cleanup whitespace
+  out = out
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .split("\n")
+    .map((l) => l.replace(/[ \t]{2,}/g, " ").trimEnd())
+    .join("\n")
+    .trim();
+
+  return out;
 };
 
-  const user = getCurrentUser();
+// Parse plain-text AI response into a mind map tree.
+// Headings (short terminal-punctuation-free lines followed by a blank line)
+// become branches; dash / numbered bullets become children.
+const parseTextToMindMap = (text) => {
+  if (!text) return null;
+
+  const cleaned = cleanAIResponse(text);
+  const rawLines = cleaned.split("\n");
+  if (!rawLines.length) return null;
+
+  const clip = (s, n) => {
+    const t = (s || "").trim().replace(/[:.]$/, "");
+    return t.length > n ? t.slice(0, n - 1) + "…" : t;
+  };
+
+  const isBullet = (l) => /^[-*]\s+/.test(l) || /^\d+[.)]\s+/.test(l);
+  const stripBullet = (l) => l.replace(/^[-*]\s+/, "").replace(/^\d+[.)]\s+/, "");
+
+  const isHeadingLike = (line, next) => {
+    const t = line.trim();
+    if (!t || isBullet(t)) return false;
+    if (t.length > 70) return false;
+    if (/[.;,]$/.test(t)) return false;
+    const nextBlank = !next || !next.trim();
+    return nextBlank && t.split(/\s+/).length <= 10;
+  };
+
+  // Pick root: first heading-like line, else first short line
+  let root = "Summary";
+  for (let i = 0; i < rawLines.length; i++) {
+    const l = rawLines[i].trim();
+    if (!l) continue;
+    if (isHeadingLike(rawLines[i], rawLines[i + 1])) {
+      root = clip(l, 60);
+      break;
+    }
+    if (l.length < 70 && !isBullet(l)) {
+      root = clip(l, 60);
+      break;
+    }
+  }
+
+  const branches = [];
+  let current = null;
+  let rootUsed = false;
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const raw = rawLines[i];
+    const line = raw.trim();
+    if (!line) continue;
+
+    if (!rootUsed && clip(line, 60) === root) {
+      rootUsed = true;
+      continue;
+    }
+
+    if (isBullet(line)) {
+      const child = clip(stripBullet(line), 70);
+      if (!child) continue;
+      if (current) current.children.push({ label: child });
+      else branches.push({ label: child, children: [] });
+      continue;
+    }
+
+    if (isHeadingLike(raw, rawLines[i + 1])) {
+      current = { label: clip(line, 70), children: [] };
+      branches.push(current);
+      continue;
+    }
+
+    // Long prose paragraph → use first short phrase as a branch
+    if (line.length < 90) {
+      current = { label: clip(line, 70), children: [] };
+      branches.push(current);
+    } else if (current) {
+      const snippet = line.split(/[.;]/)[0];
+      current.children.push({ label: clip(snippet, 70) });
+    } else {
+      current = { label: clip(line.split(/[.;]/)[0], 70), children: [] };
+      branches.push(current);
+    }
+  }
+
+  if (!branches.length) return null;
+
+  const trimmed = branches.slice(0, 8).map((b) => ({
+    ...b,
+    children: (b.children || []).slice(0, 5),
+  }));
+
+  return { root, branches: trimmed };
+};
+
+
 
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
@@ -542,41 +702,62 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
           {/* User Section */}
           <div className="p-3 border-t border-gray-800">
             <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-yellow-100 text-black">
-              <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center">
-                <User size={16} />
+              <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center overflow-hidden">
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.username}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User size={16} />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{user.username}</div>
                 <div className="text-xs text-gray-500 truncate">{user.email}</div>
               </div>
               <div className="relative">
-  <Settings 
-    size={16} 
-    className="text-gray-500 hover:text-black cursor-pointer"
-    onClick={() => setOpenSettings(!openSettings)}
-  />
+                <Settings
+                  size={16}
+                  className="text-gray-500 hover:text-black cursor-pointer"
+                  onClick={() => setOpenSettings(!openSettings)}
+                />
 
-  {openSettings && (
-    <div className="absolute bottom-10 right-0 bg-white shadow-lg rounded-lg p-2 w-40 border z-50">
-      
-      <div className="p-2 hover:bg-gray-100 cursor-pointer text-sm">
-        👤 Profile
-      </div>
+                {openSettings && (
+                  <div className="absolute bottom-10 right-0 bg-white shadow-lg rounded-lg p-1 w-44 border border-gray-200 z-50">
+                    <button
+                      onClick={() => {
+                        setShowProfile(true);
+                        setOpenSettings(false);
+                      }}
+                      className="w-full text-left p-2 hover:bg-yellow-50 rounded cursor-pointer text-sm flex items-center gap-2"
+                    >
+                      <User size={14} />
+                      <span>Profile</span>
+                    </button>
 
-      <div className="p-2 hover:bg-gray-100 cursor-pointer text-sm">
-        ⚙️ Settings
-      </div>
+                    <button
+                      onClick={() => {
+                        setShowSettings(true);
+                        setOpenSettings(false);
+                      }}
+                      className="w-full text-left p-2 hover:bg-yellow-50 rounded cursor-pointer text-sm flex items-center gap-2"
+                    >
+                      <Settings size={14} />
+                      <span>Settings</span>
+                    </button>
 
-      <div 
-        onClick={handleLogout}
-        className="p-2 hover:bg-red-100 text-red-500 cursor-pointer text-sm"
-      >
-        🚪 Logout
-      </div>
-
-    </div>
-  )}
-</div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left p-2 hover:bg-red-50 text-red-500 rounded cursor-pointer text-sm flex items-center gap-2"
+                    >
+                      <X size={14} />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -677,9 +858,9 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
                     className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-yellow-500 transition-colors cursor-pointer bg-white hover:bg-yellow-50"
                   >
                     <Upload className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-                    <p className="text-gray-700 font-medium mb-2">Upload PDF Document</p>
+                    <p className="text-gray-700 font-medium mb-2">Upload Document</p>
                     <p className="text-gray-500 text-sm">Click to browse or drag & drop</p>
-                    <p className="text-xs text-gray-500 mt-2">Max file size: 10MB</p>
+                    <p className="text-xs text-gray-500 mt-2">PDF, DOCX, PPTX, TXT · Max 10MB</p>
                   </div>
                   {uploadError && (
                     <div className="mt-3 text-red-500 text-sm bg-red-50 p-2 rounded">
@@ -694,7 +875,7 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
             {messages.map(msg => (
               <div 
                 key={msg.id} 
-                className={`mb-6 ${msg.sender === "user" ? "text-right" : ""}`}
+                className={`${appSettings.compactMode ? "mb-2" : "mb-6"} ${msg.sender === "user" ? "text-right" : ""}`}
               >
                 <div className={`inline-block max-w-[80%] ${msg.sender === "user" ? "text-right" : ""}`}>
                   {msg.sender === "bot" && (
@@ -707,68 +888,57 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
                   )}
                   
                   <div className={`px-4 py-3 rounded-2xl ${
-                    msg.sender === "bot" 
-                      ? "bg-gray-100 text-gray-800" 
+                    msg.sender === "bot"
+                      ? "bg-gray-100 text-gray-800"
                       : "bg-yellow-400 text-black"
                   }`}>
-                    <div className="prose prose-sm max-w-none text-gray-800 text-left">
-  <ReactMarkdown>{msg.text}</ReactMarkdown>
-</div>
+                    <PlainTextResponse text={msg.text} />
                   </div>
 
-{/* ✅ SOURCE DISPLAY */}
-{msg.sender === "bot" && msg.source && (
-  <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
-    📄 Source: {msg.source}
-  </div>
-)}
-{/* COPY BUTTON */}
-{/* COPY BUTTON */}
-{msg.sender === "bot" && (
-  <button
-    onClick={() => {
-      const cleanText = msg.text
-        .replace(/\*\*/g, "")          // remove bold
-        .replace(/#/g, "")             // remove headings
-        .replace(/`/g, "")             // remove backticks
-        .replace(/•/g, "\n• ")         // fix bullet spacing
-        .replace(/\.\s+/g, ".\n")      // new line after sentences
-        .replace(/\n{2,}/g, "\n\n")    // clean spacing
-        .trim();
+                  {msg.sender === "bot" && msg.source && (
+                    <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                      Source: {msg.source}
+                    </div>
+                  )}
 
-      navigator.clipboard.writeText(cleanText);
+                  {msg.sender === "bot" && (
+                    <div className="flex items-center gap-3 mt-1 text-gray-500">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(cleanAIResponse(msg.text));
+                          setCopiedId(msg.id);
+                          setTimeout(() => setCopiedId(null), 1200);
+                        }}
+                        className="flex items-center gap-1 text-xs hover:text-black cursor-pointer"
+                        title="Copy response"
+                      >
+                        <Copy size={14} />
+                        {copiedId === msg.id && (
+                          <span className="text-green-500">Copied</span>
+                        )}
+                      </button>
 
-      setCopiedId(msg.id);
-      setTimeout(() => setCopiedId(null), 1200);
-    }}
-    className="flex items-center gap-1 text-xs mt-1 text-gray-500 hover:text-black cursor-pointer"
-  >
-    <Copy size={14} />
-    {copiedId === msg.id && (
-      <span className="text-green-500">Copied</span>
-    )}
-  </button>
-)}
-{/* generating mind map  */}
-
-{msg.sender === "bot" && (
-  <button
-    onClick={() => generateMindMap(msg.text)}
-    className="text-xs mt-1 text-purple-600 hover:text-purple-800 cursor-pointer"
-  >
-    🧠 Mind Map
-  </button>
-)}
+                      <button
+                        onClick={() => {
+                          const data = parseTextToMindMap(msg.text);
+                          if (data) {
+                            setMindMapData(data);
+                            setMindMapTitle(data.root);
+                          }
+                        }}
+                        className="flex items-center gap-1 text-xs hover:text-yellow-600 cursor-pointer"
+                        title="Generate mind map"
+                      >
+                        <Network size={14} />
+                        <span>Mind Map</span>
+                      </button>
+                    </div>
+                  )}
 
 
-
-
-
-                  
-                  {msg.timestamp && (
-                    <div className={`text-xs mt-1 px-1 ${
-                      msg.sender === "bot" ? "text-gray-500" : "text-gray-500"
-                    }`}>
+        
+                  {msg.timestamp && appSettings.showTimestamps !== false && (
+                    <div className="text-xs mt-1 px-1 text-gray-500">
                       {msg.timestamp}
                     </div>
                   )}
@@ -806,7 +976,7 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={documents.length === 0 
-                  ? "Upload a PDF document first to start chatting..." 
+                  ? "Upload a document first to start chatting..."
                   : backendStatus === "offline"
                     ? "Simulated mode - Backend offline. Type your question..."
                     : "Message RAG Assistant..."}
@@ -833,7 +1003,7 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
                   disabled={loading}
                 >
                   <Upload size={14} />
-                  <span>Upload PDF</span>
+                  <span>Upload Document</span>
                   {loading && (
                     <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-400"></div>
                   )}
@@ -849,7 +1019,7 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
               
               <div className="text-xs text-gray-500">
                 {documents.length === 0 
-                  ? "Upload a PDF first to start chatting" 
+                  ? "Upload a document first to start chatting"
                   : "Press Enter to send • Shift+Enter for new line"}
               </div>
             </div>
@@ -867,10 +1037,648 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf"
+        accept=".pdf,.docx,.pptx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
         onChange={handleFileUpload}
         className="hidden"
       />
+
+      {/* Mind Map Modal */}
+      {mindMapData && (
+        <MindMapModal
+          data={mindMapData}
+          title={mindMapTitle}
+          onClose={() => setMindMapData(null)}
+        />
+      )}
+
+      {/* Profile Modal */}
+      {showProfile && (
+        <ProfileModal
+          profile={profile}
+          onSave={(next) => {
+            saveProfile(next);
+            setShowProfile(false);
+          }}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal
+          settings={appSettings}
+          backendStatus={backendStatus}
+          onSave={(next) => {
+            saveSettings(next);
+            setShowSettings(false);
+          }}
+          onClose={() => setShowSettings(false)}
+          onLogout={handleLogout}
+        />
+      )}
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────
+// Plain Text Response — renders AI text as clean paragraphs
+// and dash-bulleted lists. No markdown, no tables, no LaTeX.
+// ───────────────────────────────────────────────────────────
+function PlainTextResponse({ text }) {
+  if (!text) return null;
+
+  const lines = String(text).split("\n");
+  const blocks = [];
+  let buffer = [];
+  let bulletBuffer = [];
+
+  const flushPara = () => {
+    if (buffer.length) {
+      blocks.push({ type: "p", content: buffer.join(" ") });
+      buffer = [];
+    }
+  };
+  const flushList = () => {
+    if (bulletBuffer.length) {
+      blocks.push({ type: "ul", items: bulletBuffer });
+      bulletBuffer = [];
+    }
+  };
+
+  const isHeadingLike = (line, nextLine) => {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    if (trimmed.length > 70) return false;
+    if (/[.:;,]$/.test(trimmed)) return false;
+    const nextBlank = !nextLine || !nextLine.trim();
+    return nextBlank && trimmed.split(/\s+/).length <= 10;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trim();
+
+    if (!line) {
+      flushList();
+      flushPara();
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(line) || /^\d+[.)]\s+/.test(line)) {
+      flushPara();
+      bulletBuffer.push(line.replace(/^[-*]\s+/, "").replace(/^\d+[.)]\s+/, ""));
+      continue;
+    }
+
+    if (bulletBuffer.length) flushList();
+
+    if (isHeadingLike(raw, lines[i + 1])) {
+      flushPara();
+      blocks.push({ type: "h", content: line });
+      continue;
+    }
+
+    buffer.push(line);
+  }
+  flushList();
+  flushPara();
+
+  return (
+    <div className="text-left text-sm leading-relaxed text-gray-800 space-y-2">
+      {blocks.map((b, i) => {
+        if (b.type === "h") {
+          return (
+            <div key={i} className="font-semibold text-gray-900 pt-1">
+              {b.content}
+            </div>
+          );
+        }
+        if (b.type === "ul") {
+          return (
+            <ul key={i} className="list-disc pl-5 space-y-0.5">
+              {b.items.map((it, j) => (
+                <li key={j}>{it}</li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <p key={i} className="whitespace-pre-wrap">
+            {b.content}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────
+// Mind Map Modal Component
+// ───────────────────────────────────────────────────────────
+function MindMapModal({ data, title, onClose }) {
+  const { root, branches } = data;
+
+  // Layout calculations
+  const rowHeight = 90;
+  const rootX = 40;
+  const rootW = 220;
+  const branchX = 340;
+  const branchW = 240;
+  const childX = 640;
+  const childW = 220;
+
+  const totalRows = branches.reduce(
+    (acc, b) => acc + Math.max(1, (b.children || []).length),
+    0
+  );
+  const height = Math.max(400, totalRows * rowHeight + 80);
+  const width = childX + childW + 60;
+
+  // Compute y positions for branches and children
+  let cursor = 60;
+  const layout = branches.map((b) => {
+    const childCount = Math.max(1, (b.children || []).length);
+    const branchTop = cursor;
+    const branchBottom = cursor + childCount * rowHeight;
+    const branchY = (branchTop + branchBottom) / 2;
+    const children = (b.children || []).map((c, i) => ({
+      ...c,
+      y: branchTop + i * rowHeight + rowHeight / 2,
+    }));
+    cursor = branchBottom;
+    return { ...b, y: branchY, children };
+  });
+
+  const rootY = height / 2;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center">
+              <Network size={16} className="text-white" />
+            </div>
+            <div>
+              <div className="font-semibold text-gray-900">Mind Map</div>
+              <div className="text-xs text-gray-500 truncate max-w-md">
+                {title}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+            title="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto bg-gradient-to-br from-yellow-50 to-white p-6">
+          <svg width={width} height={height} style={{ minWidth: width }}>
+            {/* Root → Branch curves */}
+            {layout.map((b, i) => {
+              const x1 = rootX + rootW;
+              const y1 = rootY;
+              const x2 = branchX;
+              const y2 = b.y;
+              const mx = (x1 + x2) / 2;
+              return (
+                <path
+                  key={`r-${i}`}
+                  d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
+                  stroke="#eab308"
+                  strokeWidth="2.5"
+                  fill="none"
+                />
+              );
+            })}
+
+            {/* Branch → Child curves */}
+            {layout.map((b, i) =>
+              (b.children || []).map((c, j) => {
+                const x1 = branchX + branchW;
+                const y1 = b.y;
+                const x2 = childX;
+                const y2 = c.y;
+                const mx = (x1 + x2) / 2;
+                return (
+                  <path
+                    key={`c-${i}-${j}`}
+                    d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
+                    stroke="#fbbf24"
+                    strokeWidth="1.5"
+                    fill="none"
+                    opacity="0.7"
+                  />
+                );
+              })
+            )}
+
+            {/* Root node */}
+            <g>
+              <rect
+                x={rootX}
+                y={rootY - 36}
+                width={rootW}
+                height={72}
+                rx="14"
+                fill="#facc15"
+                stroke="#ca8a04"
+                strokeWidth="2"
+              />
+              <foreignObject
+                x={rootX + 8}
+                y={rootY - 32}
+                width={rootW - 16}
+                height={64}
+              >
+                <div
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  className="w-full h-full flex items-center justify-center text-center text-sm font-bold text-black px-2"
+                >
+                  {root}
+                </div>
+              </foreignObject>
+            </g>
+
+            {/* Branch nodes */}
+            {layout.map((b, i) => (
+              <g key={`bn-${i}`}>
+                <rect
+                  x={branchX}
+                  y={b.y - 28}
+                  width={branchW}
+                  height={56}
+                  rx="10"
+                  fill="#fef3c7"
+                  stroke="#f59e0b"
+                  strokeWidth="1.5"
+                />
+                <foreignObject
+                  x={branchX + 8}
+                  y={b.y - 24}
+                  width={branchW - 16}
+                  height={48}
+                >
+                  <div
+                    xmlns="http://www.w3.org/1999/xhtml"
+                    className="w-full h-full flex items-center justify-center text-center text-xs font-semibold text-gray-800 px-1"
+                  >
+                    {b.label}
+                  </div>
+                </foreignObject>
+              </g>
+            ))}
+
+            {/* Child nodes */}
+            {layout.map((b, i) =>
+              (b.children || []).map((c, j) => (
+                <g key={`cn-${i}-${j}`}>
+                  <rect
+                    x={childX}
+                    y={c.y - 20}
+                    width={childW}
+                    height={40}
+                    rx="8"
+                    fill="#fffbeb"
+                    stroke="#fde68a"
+                    strokeWidth="1"
+                  />
+                  <foreignObject
+                    x={childX + 6}
+                    y={c.y - 18}
+                    width={childW - 12}
+                    height={36}
+                  >
+                    <div
+                      xmlns="http://www.w3.org/1999/xhtml"
+                      className="w-full h-full flex items-center justify-center text-center text-[11px] text-gray-700 px-1 leading-tight"
+                    >
+                      {c.label}
+                    </div>
+                  </foreignObject>
+                </g>
+              ))
+            )}
+          </svg>
+        </div>
+
+        <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 text-xs text-gray-500 flex items-center justify-between">
+          <span>
+            {branches.length} branches •{" "}
+            {branches.reduce((a, b) => a + (b.children?.length || 0), 0)} leaves
+          </span>
+          <span>Scroll to pan · Click outside to close</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────
+// Profile Modal — edit username, email, avatar
+// ───────────────────────────────────────────────────────────
+function ProfileModal({ profile, onSave, onClose }) {
+  const [username, setUsername] = useState(profile.username || "");
+  const [email, setEmail] = useState(profile.email || "");
+  const [avatar, setAvatar] = useState(profile.avatar || "");
+  const [error, setError] = useState("");
+  const avatarInputRef = useRef(null);
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image must be under 2 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatar(reader.result);
+      setError("");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!username.trim()) {
+      setError("Name is required.");
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email.");
+      return;
+    }
+    onSave({
+      username: username.trim(),
+      email: email.trim(),
+      avatar: avatar || "",
+    });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white rounded-xl w-full max-w-md shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center">
+              <User size={16} className="text-white" />
+            </div>
+            <div className="font-semibold text-gray-900">Edit Profile</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          <div className="flex flex-col items-center gap-3">
+            <div
+              className="w-24 h-24 rounded-full bg-yellow-100 border-2 border-yellow-300 overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-90"
+              onClick={() => avatarInputRef.current?.click()}
+              title="Click to change"
+            >
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt={username}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User size={40} className="text-yellow-600" />
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="text-yellow-700 hover:text-yellow-800 font-medium"
+              >
+                Upload photo
+              </button>
+              {avatar && (
+                <button
+                  type="button"
+                  onClick={() => setAvatar("")}
+                  className="text-gray-500 hover:text-red-500"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Name
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none text-sm"
+              placeholder="Your name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none text-sm"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          {error && (
+            <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 rounded-b-xl">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 text-sm bg-yellow-400 hover:bg-yellow-300 text-black rounded-lg font-medium"
+          >
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────
+// Settings Modal — preferences and account actions
+// ───────────────────────────────────────────────────────────
+function SettingsModal({ settings, backendStatus, onSave, onClose, onLogout }) {
+  const [showTimestamps, setShowTimestamps] = useState(
+    settings.showTimestamps !== false
+  );
+  const [autoScroll, setAutoScroll] = useState(settings.autoScroll !== false);
+  const [compactMode, setCompactMode] = useState(!!settings.compactMode);
+
+  const handleSave = () => {
+    onSave({ showTimestamps, autoScroll, compactMode });
+  };
+
+  const Toggle = ({ checked, onChange, label, description }) => (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="w-full flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-gray-50 text-left"
+    >
+      <div>
+        <div className="text-sm font-medium text-gray-800">{label}</div>
+        {description && (
+          <div className="text-xs text-gray-500 mt-0.5">{description}</div>
+        )}
+      </div>
+      <div
+        className={`relative w-10 h-6 rounded-full transition-colors ${
+          checked ? "bg-yellow-400" : "bg-gray-300"
+        }`}
+      >
+        <div
+          className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+            checked ? "translate-x-4" : "translate-x-0.5"
+          }`}
+        />
+      </div>
+    </button>
+  );
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl w-full max-w-md shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center">
+              <Settings size={16} className="text-white" />
+            </div>
+            <div className="font-semibold text-gray-900">Settings</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-1">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 pt-2 pb-1">
+            Chat Preferences
+          </div>
+          <Toggle
+            checked={showTimestamps}
+            onChange={setShowTimestamps}
+            label="Show timestamps"
+            description="Display time next to each message"
+          />
+          <Toggle
+            checked={autoScroll}
+            onChange={setAutoScroll}
+            label="Auto-scroll to new messages"
+            description="Automatically scroll down when responses arrive"
+          />
+          <Toggle
+            checked={compactMode}
+            onChange={setCompactMode}
+            label="Compact mode"
+            description="Reduce padding between messages"
+          />
+
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 pt-4 pb-1">
+            System
+          </div>
+          <div className="flex items-center justify-between px-3 py-2 text-sm">
+            <span className="text-gray-700">Backend</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs ${
+                backendStatus === "online"
+                  ? "bg-green-100 text-green-700"
+                  : backendStatus === "offline"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-yellow-100 text-yellow-700"
+              }`}
+            >
+              {backendStatus}
+            </span>
+          </div>
+          <button
+            onClick={onLogout}
+            className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+          >
+            Log out
+          </button>
+        </div>
+
+        <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 rounded-b-xl">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 text-sm bg-yellow-400 hover:bg-yellow-300 text-black rounded-lg font-medium"
+          >
+            Save
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
