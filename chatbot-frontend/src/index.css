@@ -4,6 +4,11 @@
   color-scheme: dark;
 }
 
+html {
+  /* Medium base size — scales all rem-based text app-wide */
+  font-size: 17px;
+}
+
 html,
 body {
   margin: 0;
