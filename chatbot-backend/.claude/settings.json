@@ -17,12 +17,14 @@
       "Bash(grep -oE '\\(bg|text|border\\)-\\(gray|emerald|green\\)-[0-9]+|bg-white\\([^/]|$\\)' src/components/ChatPage.jsx)",
       "Bash(npx vite *)",
       "Bash(venv/Scripts/python.exe -m py_compile app/main.py)",
-      "PowerShell(Write-Output \"=== Anything listening on :8000 ===\"; $c = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue; if \\($c\\) { $c | Select-Object LocalAddress,LocalPort,State,OwningProcess | Format-Table -AutoSize; $c | ForEach-Object { try { $p = Get-Process -Id $_.OwningProcess -ErrorAction Stop; \"PID $\\($p.Id\\) = $\\($p.ProcessName\\)\" } catch {} } } else { Write-Output \"Nothing is listening on 8000.\" }; Write-Output \"=== Is 8000 in a Windows reserved/excluded range? ===\"; netsh interface ipv4 show excludedportrange protocol=tcp | Select-String -Pattern \"80|Start\" | Select-Object -First 20)"
+      "PowerShell(Write-Output \"=== Anything listening on :8000 ===\"; $c = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue; if \\($c\\) { $c | Select-Object LocalAddress,LocalPort,State,OwningProcess | Format-Table -AutoSize; $c | ForEach-Object { try { $p = Get-Process -Id $_.OwningProcess -ErrorAction Stop; \"PID $\\($p.Id\\) = $\\($p.ProcessName\\)\" } catch {} } } else { Write-Output \"Nothing is listening on 8000.\" }; Write-Output \"=== Is 8000 in a Windows reserved/excluded range? ===\"; netsh interface ipv4 show excludedportrange protocol=tcp | Select-String -Pattern \"80|Start\" | Select-Object -First 20)",
+      "Read(//c/Users/Nanditha Sai/Desktop/chatbot/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\Nanditha Sai\\Desktop\\chatbot\\chatbot-frontend\\src\\components",
       "c:\\Users\\Nanditha Sai\\Desktop\\chatbot\\chatbot-frontend\\src",
-      "c:\\Users\\Nanditha Sai\\Desktop\\chatbot\\chatbot-frontend"
+      "c:\\Users\\Nanditha Sai\\Desktop\\chatbot\\chatbot-frontend",
+      "c:\\Users\\Nanditha Sai\\Desktop\\chatbot"
     ]
   }
 }
