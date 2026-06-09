@@ -39,9 +39,9 @@ JINA_API_KEY = os.getenv("JINA_API_KEY")
 if not MONGO_URL:
     raise Exception("❌ MONGO_URL missing in .env")
 
-print("MongoDB:", "✅ configured")
-print("Groq:", "✅ configured" if GROQ_API_KEY else "❌ missing")
-print("Jina:", "✅ configured" if JINA_API_KEY else "❌ missing")
+print("MongoDB:", "[OK] configured")
+print("Groq:", "[OK] configured" if GROQ_API_KEY else "[MISSING]")
+print("Jina:", "[OK] configured" if JINA_API_KEY else "[MISSING]")
 
 
 # ============================
@@ -67,9 +67,9 @@ try:
     client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000, tls=True)
     client.server_info()
     db = client["rag_chatbot_db"]
-    print("✅ MongoDB connected")
+    print("[OK] MongoDB connected")
 except Exception as e:
-    print("❌ MongoDB failed:", e)
+    print("[ERROR] MongoDB failed:", e)
     db = None
 
 
@@ -378,7 +378,7 @@ def root():
 @app.get("/health")
 def health():
     return {
-        "mongodb": "connected" if db else "fallback",
+        "mongodb": "connected" if db is not None else "fallback",
         "groq": "ready" if groq_client else "missing"
     }
 
