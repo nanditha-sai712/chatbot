@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 function Header() {
@@ -13,56 +13,54 @@ function Header() {
   ];
 
   return (
-    <nav className="bg-white border-b shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+    <nav className="sticky top-0 z-50 bg-black/30 backdrop-blur-xl border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-6 py-3.5 flex justify-between items-center">
 
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="bg-yellow-400 p-2 rounded-lg">
-            <Brain className="text-black" />
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="bg-gradient-to-br from-violet-600 to-fuchsia-600 p-2 rounded-xl shadow-lg shadow-fuchsia-600/40 group-hover:scale-105 transition-transform">
+            <Sparkles className="h-5 w-5 text-white" />
           </div>
-          <h1 className="font-bold text-lg text-black">
-            DocuChat AI
+          <h1 className="font-bold text-lg tracking-tight text-white">
+            DocuChat <span className="text-gradient">AI</span>
           </h1>
-        </div>
+        </Link>
 
         {/* Nav */}
-        <div className="hidden md:flex items-center gap-3">
-
-          {navLinks.map((link) => (
-            <Link
-              key={link.name}
-              to={link.path}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition
-                ${
-                  location.pathname === link.path
-                    ? "bg-yellow-400 text-black shadow-sm"
-                    : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                }`}
-            >
-              {link.name}
-            </Link>
-          ))}
-
+        <div className="hidden md:flex items-center gap-1">
+          {navLinks.map((link) => {
+            const active = location.pathname === link.path;
+            return (
+              <Link
+                key={link.name}
+                to={link.path}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition
+                  ${active
+                    ? "bg-white/10 text-white"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+              >
+                {link.name}
+              </Link>
+            );
+          })}
         </div>
 
         {/* Auth Buttons */}
-        <div className="flex items-center gap-3">
-          
-          <Link 
-            to="/login" 
-            className="px-4 py-2 text-sm font-medium bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition"
+        <div className="flex items-center gap-2">
+          <Link
+            to="/login"
+            className="px-4 py-2 text-sm font-medium text-slate-300 rounded-lg hover:bg-white/5 hover:text-white transition"
           >
             Login
           </Link>
 
-          <Link 
+          <Link
             to="/register"
-            className="bg-yellow-400 px-4 py-2 rounded-lg text-black font-medium hover:bg-yellow-300 transition"
+            className="btn-grad px-4 py-2 rounded-lg text-sm font-semibold"
           >
-            Register
+            Get Started
           </Link>
-
         </div>
 
       </div>

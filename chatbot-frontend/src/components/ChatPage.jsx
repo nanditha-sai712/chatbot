@@ -11,12 +11,11 @@ import {
   User,
   Settings,
   Trash2,
-  Edit,
   X,
   Menu,
   AlertCircle,
   Copy,
-  Network
+  Sparkles
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -40,8 +39,6 @@ function ChatPage() {
   const [copiedId, setCopiedId] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [mindMapData, setMindMapData] = useState(null);
-  const [mindMapTitle, setMindMapTitle] = useState("");
   const [profile, setProfile] = useState(() => {
     try {
       const u = JSON.parse(localStorage.getItem("user") || "{}");
@@ -66,15 +63,19 @@ function ChatPage() {
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
 
+  // Use local backend in dev (via .env), fall back to deployed backend in prod
+  const API_URL = import.meta.env.VITE_API_URL || "https://chatbot-eo65.onrender.com";
+
   // Check backend status - FIXED: Try multiple endpoints
   useEffect(() => {
     const checkBackend = async () => {
       try {
         // Try multiple endpoints since /health might not exist
+        const API = import.meta.env.VITE_API_URL;
         const endpoints = [
-          'https://chatbot-eo65.onrender.com/',
-          'https://chatbot-eo65.onrender.com/docs',
-          'https://chatbot-eo65.onrender.com/redoc'
+          `${API}/`,
+          `${API}/docs`,
+          `${API}/redoc`
         ];
         
         let backendOnline = false;
@@ -183,7 +184,7 @@ function ChatPage() {
       formData.append('document_name', file.name);
       
       // Call backend upload API
-      const response = await fetch('https://chatbot-eo65.onrender.com/upload/pdf', {
+      const response = await fetch(`${API_URL}/upload/pdf`, {
         method: 'POST',
         body: formData,
       });
@@ -329,7 +330,7 @@ function ChatPage() {
       }
       
       // Call backend API for real response
-      const response = await fetch('https://chatbot-eo65.onrender.com/chat/ai', {
+      const response = await fetch(`${API_URL}/chat/ai`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -463,9 +464,16 @@ aiResponse = cleanAIResponse(aiResponse);
 
   const user = profile;
 
+// Collapse runs of 3+ identical letters — a PDF/PPTX extraction artifact
+// that duplicates characters, e.g. "TTTThhhhrrrreeeeeeee" -> "Three".
+// (No English word has a letter 3+ times in a row, so legit doubles like
+// "oo"/"ll" are preserved.)
+const dedupeRepeatedChars = (text) =>
+  (text || "").replace(/([A-Za-z])\1{2,}/g, "$1");
+
 const cleanAIResponse = (text) => {
   if (!text) return "";
-  let out = text
+  let out = dedupeRepeatedChars(text)
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/?[a-zA-Z][^>]*>/g, "")
     .replace(/\r\n/g, "\n");
@@ -522,177 +530,75 @@ const cleanAIResponse = (text) => {
   return out;
 };
 
-// Parse plain-text AI response into a mind map tree.
-// Headings (short terminal-punctuation-free lines followed by a blank line)
-// become branches; dash / numbered bullets become children.
-const parseTextToMindMap = (text) => {
-  if (!text) return null;
-
-  const cleaned = cleanAIResponse(text);
-  const rawLines = cleaned.split("\n");
-  if (!rawLines.length) return null;
-
-  const clip = (s, n) => {
-    const t = (s || "").trim().replace(/[:.]$/, "");
-    return t.length > n ? t.slice(0, n - 1) + "…" : t;
-  };
-
-  const isBullet = (l) => /^[-*]\s+/.test(l) || /^\d+[.)]\s+/.test(l);
-  const stripBullet = (l) => l.replace(/^[-*]\s+/, "").replace(/^\d+[.)]\s+/, "");
-
-  const isHeadingLike = (line, next) => {
-    const t = line.trim();
-    if (!t || isBullet(t)) return false;
-    if (t.length > 70) return false;
-    if (/[.;,]$/.test(t)) return false;
-    const nextBlank = !next || !next.trim();
-    return nextBlank && t.split(/\s+/).length <= 10;
-  };
-
-  // Pick root: first heading-like line, else first short line
-  let root = "Summary";
-  for (let i = 0; i < rawLines.length; i++) {
-    const l = rawLines[i].trim();
-    if (!l) continue;
-    if (isHeadingLike(rawLines[i], rawLines[i + 1])) {
-      root = clip(l, 60);
-      break;
-    }
-    if (l.length < 70 && !isBullet(l)) {
-      root = clip(l, 60);
-      break;
-    }
-  }
-
-  const branches = [];
-  let current = null;
-  let rootUsed = false;
-
-  for (let i = 0; i < rawLines.length; i++) {
-    const raw = rawLines[i];
-    const line = raw.trim();
-    if (!line) continue;
-
-    if (!rootUsed && clip(line, 60) === root) {
-      rootUsed = true;
-      continue;
-    }
-
-    if (isBullet(line)) {
-      const child = clip(stripBullet(line), 70);
-      if (!child) continue;
-      if (current) current.children.push({ label: child });
-      else branches.push({ label: child, children: [] });
-      continue;
-    }
-
-    if (isHeadingLike(raw, rawLines[i + 1])) {
-      current = { label: clip(line, 70), children: [] };
-      branches.push(current);
-      continue;
-    }
-
-    // Long prose paragraph → use first short phrase as a branch
-    if (line.length < 90) {
-      current = { label: clip(line, 70), children: [] };
-      branches.push(current);
-    } else if (current) {
-      const snippet = line.split(/[.;]/)[0];
-      current.children.push({ label: clip(snippet, 70) });
-    } else {
-      current = { label: clip(line.split(/[.;]/)[0], 70), children: [] };
-      branches.push(current);
-    }
-  }
-
-  if (!branches.length) return null;
-
-  const trimmed = branches.slice(0, 8).map((b) => ({
-    ...b,
-    children: (b.children || []).slice(0, 5),
-  }));
-
-  return { root, branches: trimmed };
-};
-
-
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
+    <div className="h-screen w-full flex overflow-hidden">
       {/* Left Sidebar */}
       {sidebarOpen && (
-        <div className="w-64 bg-white text-gray-800 flex flex-col h-full border-r border-gray-200">
+        <div className="w-56 bg-[#0b0b12] text-white flex flex-col overflow-hidden shrink-0 border-r border-white/10">
+          {/* Brand */}
+          <div className="px-4 min-h-[68px] flex items-center gap-2.5 border-b border-white/10 shrink-0">
+            <div className="bg-gradient-to-br from-violet-600 to-fuchsia-600 p-1.5 rounded-lg shadow-lg shadow-fuchsia-600/30">
+              <Sparkles size={16} className="text-white" />
+            </div>
+            <span className="font-bold tracking-tight text-white">
+              DocuChat <span className="text-gradient">AI</span>
+            </span>
+          </div>
+
           {/* New Chat Button */}
-          <div className="p-3 border-b border-gray-800">
-            <button 
+          <div className="px-3 pt-3 pb-2">
+            <button
               onClick={startNewChat}
-className="w-full flex items-center gap-2 px-3 py-2 bg-white hover:bg-yellow-100 text-black border border-yellow-200 rounded-lg text-sm mt-2"            >
+              className="btn-grad w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold"
+            >
               <Plus size={18} />
-              <span className="font-medium">New Chat</span>
+              New Chat
             </button>
           </div>
 
           {/* Chat History */}
           <div className="flex-1 overflow-y-auto p-2">
-            <div className="text-xs font-medium text-gray-500 px-3 py-2">Recent Chats</div>
-            <div className="space-y-1">
-              {[
-                { id: 1, title: "New Chat", date: "Today", active: true },
-                { id: 2, title: "Research Paper", date: "Yesterday", active: true },
-                { id: 3, title: "Document Q&A", date: "Jan 15", active: true },
-              ].map(chat => (
-                <button
-                  key={chat.id}
-                  className={`w-full text-left px-3 py-3 rounded-lg flex items-center justify-between group ${
-                    chat.active 
-  ? "bg-yellow-400 text-black" 
-  : "bg-white hover:bg-yellow-100  border-yellow-200"
-                  }`}
-                  onClick={startNewChat}
-                >
-                  <div className="flex items-center gap-3">
-                    <MessageSquare size={16} />
-                    <span className="text-sm truncate">{chat.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100">
-                    <Edit size={14} className="text-gray-500 hover:text-white" />
-                    <Trash2 size={14} className="text-gray-500 hover:text-white" />
-                  </div>
-                </button>
-              ))}
+            <div className="px-3 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">History</div>
+            <div className="px-3 py-2 flex items-center gap-2 text-xs text-slate-500">
+              <MessageSquare size={14} className="shrink-0" />
+              <span>No conversations yet</span>
             </div>
 
             {/* Documents Section */}
-            <div className="mt-6">
-              <div className="text-xs font-medium text-gray-500 px-3 py-2">Documents</div>
+            <div className="mt-5">
+              <div className="px-3 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Documents</div>
               <div className="space-y-1">
                 {documents.map(doc => (
-                  <div 
+                  <div
                     key={doc.id}
-className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-100 text-black border border-yellow-200 rounded-lg group"                  >
-                    <div className="flex items-center gap-2">
-                      <FileText size={14} className="text-yellow-400" />
-                      <div className="flex flex-col">
-                        <span className="text-sm truncate max-w-[150px]">{doc.name}</span>
-                        <span className="text-xs text-gray-500">{doc.size} • {doc.date}</span>
-                        {doc.simulated && (
-                          <span className="text-xs text-yellow-400">Simulated</span>
-                        )}
+                    className="flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-white/5 border border-white/10 group"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-fuchsia-500/15 flex items-center justify-center shrink-0">
+                        <FileText size={14} className="text-fuchsia-400" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm truncate max-w-[130px]">{doc.name}</span>
+                        <span className="text-xs text-slate-500 truncate">
+                          {doc.size} • {doc.date}{doc.simulated ? " • Simulated" : ""}
+                        </span>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={(e) => deleteDocument(doc.id, e)}
-                      className="p-1 text-gray-500 hover:text-white opacity-0 group-hover:opacity-100"
+                      className="p-1 text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 shrink-0"
                     >
                       <Trash2 size={14} />
                     </button>
                   </div>
                 ))}
-                
-                <button 
+
+                <button
                   onClick={triggerFileInput}
-       className="flex items-center justify-between px-3 py-2 bg-yellow hover:bg-yellow-100 text-black border border-yellow-200 rounded-lg group"         >
-                  <Upload size={14} />
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 border border-dashed border-white/15 transition"
+                >
+                  <Upload size={15} />
                   <span>Upload document</span>
                 </button>
               </div>
@@ -700,9 +606,9 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
           </div>
 
           {/* User Section */}
-          <div className="p-3 border-t border-gray-800">
-            <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-yellow-100 text-black">
-              <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center overflow-hidden">
+          <div className="px-3 border-t border-white/10 min-h-[68px] flex items-center shrink-0">
+            <div className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/5 transition">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center overflow-hidden shrink-0">
                 {user.avatar ? (
                   <img
                     src={user.avatar}
@@ -715,23 +621,23 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{user.username}</div>
-                <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                <div className="text-xs text-slate-400 truncate">{user.email}</div>
               </div>
               <div className="relative">
                 <Settings
                   size={16}
-                  className="text-gray-500 hover:text-black cursor-pointer"
+                  className="text-slate-400 hover:text-white cursor-pointer"
                   onClick={() => setOpenSettings(!openSettings)}
                 />
 
                 {openSettings && (
-                  <div className="absolute bottom-10 right-0 bg-white shadow-lg rounded-lg p-1 w-44 border border-gray-200 z-50">
+                  <div className="absolute bottom-10 right-0 bg-[#0e0e1a] shadow-lg rounded-lg p-1 w-44 border border-white/10 z-50">
                     <button
                       onClick={() => {
                         setShowProfile(true);
                         setOpenSettings(false);
                       }}
-                      className="w-full text-left p-2 hover:bg-yellow-50 rounded cursor-pointer text-sm flex items-center gap-2"
+                      className="w-full text-left p-2 hover:bg-fuchsia-500/10 rounded cursor-pointer text-sm flex items-center gap-2"
                     >
                       <User size={14} />
                       <span>Profile</span>
@@ -742,7 +648,7 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
                         setShowSettings(true);
                         setOpenSettings(false);
                       }}
-                      className="w-full text-left p-2 hover:bg-yellow-50 rounded cursor-pointer text-sm flex items-center gap-2"
+                      className="w-full text-left p-2 hover:bg-fuchsia-500/10 rounded cursor-pointer text-sm flex items-center gap-2"
                     >
                       <Settings size={14} />
                       <span>Settings</span>
@@ -750,7 +656,7 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
 
                     <button
                       onClick={handleLogout}
-                      className="w-full text-left p-2 hover:bg-red-50 text-red-500 rounded cursor-pointer text-sm flex items-center gap-2"
+                      className="w-full text-left p-2 hover:bg-red-500/10 text-red-400 rounded cursor-pointer text-sm flex items-center gap-2"
                     >
                       <X size={14} />
                       <span>Logout</span>
@@ -764,54 +670,34 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
       )}
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Bar */}
-        <div className="h-14 border-b border-gray-200 bg-white flex items-center px-6">
+        <div className="min-h-[68px] border-b border-white/10 flex items-center px-6 shrink-0">
           {!sidebarOpen && (
             <button 
               onClick={() => setSidebarOpen(true)}
-              className="mr-4 p-2 hover:bg-gray-100 rounded-lg"
+              className="mr-4 p-2 hover:bg-white/10 rounded-lg"
             >
               <Menu size={20} />
             </button>
           )}
           
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-fuchsia-600 flex items-center justify-center">
               <Bot size={18} className="text-white" />
             </div>
             <span className="font-medium">RAG Document Assistant</span>
             {documents.length > 0 && (
-              <span className="text-sm text-gray-500 ml-2">
+              <span className="text-sm text-slate-400 ml-2">
                 ({documents.length} document{documents.length > 1 ? 's' : ''} loaded)
               </span>
             )}
-            
-            {/* Backend status indicator */}
-            <div className={`ml-2 flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
-              backendStatus === "online" 
-                ? "bg-green-100 text-green-800" 
-                : backendStatus === "offline" 
-                ? "bg-red-100 text-red-800" 
-                : "bg-yellow-100 text-yellow-800"
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                backendStatus === "online" 
-                  ? "bg-green-500" 
-                  : backendStatus === "offline" 
-                  ? "bg-red-500" 
-                  : "bg-yellow-500"
-              }`}></div>
-              {backendStatus === "online" ? "Backend Online" : 
-               backendStatus === "offline" ? "Backend Offline" : 
-               "Checking..."}
-            </div>
           </div>
           
           {sidebarOpen && (
             <button 
               onClick={() => setSidebarOpen(false)}
-              className="ml-auto p-2 hover:bg-gray-100 rounded-lg"
+              className="ml-auto p-2 hover:bg-white/10 rounded-lg"
             >
               <X size={20} />
             </button>
@@ -823,56 +709,75 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
           <div className="max-w-3xl mx-auto w-full">
             {/* Welcome message when no messages */}
             {messages.length === 1 && messages[0].sender === "bot" && (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-6">
-                  <Bot size={32} className="text-yellow-500" />
+              <div className="text-center py-6 animate-fade-up">
+                {/* Glowing gradient orb */}
+                <div className="relative w-20 h-20 mx-auto mb-5 animate-floaty">
+                  <div className="absolute -inset-8 rounded-full bg-gradient-to-tr from-fuchsia-600/40 via-violet-600/30 to-indigo-600/40 blur-3xl orb-glow" />
+                  <div className="absolute inset-0 rounded-full orb overflow-hidden shadow-2xl shadow-fuchsia-700/40">
+                    <div className="absolute inset-0 rounded-full orb-spin" />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Sparkles className="h-8 w-8 text-white drop-shadow-lg" />
+                  </div>
                 </div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">RAG Document Chatbot</h1>
-                <p className="text-gray-600 text-lg mb-8 max-w-xl mx-auto">
-                  Upload documents and ask questions. Get accurate answers based on your documents.
+
+                <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                  Hi, <span className="text-gradient">{user.username}</span>
+                </h1>
+                <p className="text-slate-400 text-base mb-7 max-w-xl mx-auto">
+                  Upload a document and ask anything — get accurate answers grounded in your content.
                 </p>
                 
                 {/* Backend status info */}
                 {backendStatus === "offline" && (
-                  <div className="max-w-md mx-auto mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-yellow-800 mb-2">
+                  <div className="max-w-md mx-auto mb-6 p-4 bg-fuchsia-500/10 border border-white/10 rounded-lg">
+                    <div className="flex items-center gap-2 text-amber-300 mb-2">
                       <AlertCircle size={18} />
                       <span className="font-medium">Backend Server Offline</span>
                     </div>
-                    <p className="text-yellow-700 text-sm">
+                    <p className="text-fuchsia-300 text-sm">
                       The backend server is not running. You can still upload documents and chat in simulated mode, but real document analysis won't be available.
                     </p>
-                    <p className="text-yellow-700 text-sm mt-2">
-                      To enable full functionality, start the backend server on <code className="bg-yellow-100 px-1 rounded">https://chatbot-eo65.onrender.com</code>
+                    <p className="text-fuchsia-300 text-sm mt-2">
+                      To enable full functionality, start the backend server on <code className="bg-fuchsia-500/10 px-1 rounded">https://chatbot-eo65.onrender.com</code>
                     </p>
-                    <p className="text-yellow-700 text-sm mt-1">
+                    <p className="text-fuchsia-300 text-sm mt-1">
                       <strong>Note:</strong> If backend is running, it might not have a /health endpoint. The app will still work when you upload a file.
                     </p>
                   </div>
                 )}
                 
-                {/* Upload button in center */}
-                <div className="max-w-md mx-auto">
-                  <div 
-                    onClick={triggerFileInput}
-                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-yellow-500 transition-colors cursor-pointer bg-white hover:bg-yellow-50"
-                  >
-                    <Upload className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-                    <p className="text-gray-700 font-medium mb-2">Upload Document</p>
-                    <p className="text-gray-500 text-sm">Click to browse or drag & drop</p>
-                    <p className="text-xs text-gray-500 mt-2">PDF, DOCX, PPTX, TXT · Max 10MB</p>
-                  </div>
-                  {uploadError && (
-                    <div className="mt-3 text-red-500 text-sm bg-red-50 p-2 rounded">
-                      {uploadError}
-                    </div>
-                  )}
+                {/* Soft gradient quick-action tiles */}
+                <div className="max-w-lg mx-auto grid grid-cols-2 gap-3">
+                  {[
+                    { icon: <Upload size={18} />, title: "Upload Document", desc: "PDF, DOCX, PPTX, TXT", grad: "from-fuchsia-500 to-purple-600" },
+                    { icon: <MessageSquare size={18} />, title: "Ask Questions", desc: "Chat with your file", grad: "from-blue-500 to-cyan-500" },
+                    { icon: <FileText size={18} />, title: "Get Summary", desc: "Instant overview", grad: "from-violet-500 to-indigo-600" },
+                  ].map((tile, i) => (
+                    <button
+                      key={i}
+                      onClick={triggerFileInput}
+                      className={`group relative overflow-hidden rounded-xl p-3.5 text-left glass hover:-translate-y-0.5 transition-all duration-300 ${i === 2 ? "col-span-2" : ""}`}
+                    >
+                      <div className={`absolute -right-6 -top-6 w-20 h-20 rounded-full bg-gradient-to-br ${tile.grad} blur-2xl opacity-50 group-hover:opacity-80 transition-opacity`} />
+                      <div className={`relative w-9 h-9 rounded-lg bg-gradient-to-br ${tile.grad} flex items-center justify-center text-white shadow-lg mb-2.5`}>
+                        {tile.icon}
+                      </div>
+                      <div className="relative font-semibold text-white text-sm">{tile.title}</div>
+                      <div className="relative text-xs text-slate-400 mt-0.5">{tile.desc}</div>
+                    </button>
+                  ))}
                 </div>
+                {uploadError && (
+                  <div className="max-w-xl mx-auto mt-4 text-red-400 text-sm bg-red-500/10 border border-red-500/30 p-2.5 rounded-xl">
+                    {uploadError}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Messages */}
-            {messages.map(msg => (
+            {/* Messages (hidden while the welcome screen is showing) */}
+            {!(messages.length === 1 && messages[0].sender === "bot") && messages.map(msg => (
               <div 
                 key={msg.id} 
                 className={`${appSettings.compactMode ? "mb-2" : "mb-6"} ${msg.sender === "user" ? "text-right" : ""}`}
@@ -880,57 +785,42 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
                 <div className={`inline-block max-w-[80%] ${msg.sender === "user" ? "text-right" : ""}`}>
                   {msg.sender === "bot" && (
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full bg-fuchsia-600 flex items-center justify-center">
                         <Bot size={12} className="text-white" />
                       </div>
-                      <span className="text-sm font-medium text-gray-700">Assistant</span>
+                      <span className="text-sm font-medium text-slate-200">Assistant</span>
                     </div>
                   )}
                   
                   <div className={`px-4 py-3 rounded-2xl ${
                     msg.sender === "bot"
-                      ? "bg-gray-100 text-gray-800"
-                      : "bg-yellow-400 text-black"
+                      ? "bg-white/10 text-white"
+                      : "bg-fuchsia-600 text-white"
                   }`}>
                     <PlainTextResponse text={msg.text} />
                   </div>
 
                   {msg.sender === "bot" && msg.source && (
-                    <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
-                      Source: {msg.source}
+                    <div className="mt-2 p-2 bg-white/5 border border-white/10 rounded text-xs text-slate-400">
+                      Source: {dedupeRepeatedChars(msg.source)}
                     </div>
                   )}
 
                   {msg.sender === "bot" && (
-                    <div className="flex items-center gap-3 mt-1 text-gray-500">
+                    <div className="flex items-center gap-3 mt-1 text-slate-400">
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(cleanAIResponse(msg.text));
                           setCopiedId(msg.id);
                           setTimeout(() => setCopiedId(null), 1200);
                         }}
-                        className="flex items-center gap-1 text-xs hover:text-black cursor-pointer"
+                        className="flex items-center gap-1 text-xs hover:text-white cursor-pointer"
                         title="Copy response"
                       >
                         <Copy size={14} />
                         {copiedId === msg.id && (
-                          <span className="text-green-500">Copied</span>
+                          <span className="text-emerald-400">Copied</span>
                         )}
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          const data = parseTextToMindMap(msg.text);
-                          if (data) {
-                            setMindMapData(data);
-                            setMindMapTitle(data.root);
-                          }
-                        }}
-                        className="flex items-center gap-1 text-xs hover:text-yellow-600 cursor-pointer"
-                        title="Generate mind map"
-                      >
-                        <Network size={14} />
-                        <span>Mind Map</span>
                       </button>
                     </div>
                   )}
@@ -938,7 +828,7 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
 
         
                   {msg.timestamp && appSettings.showTimestamps !== false && (
-                    <div className="text-xs mt-1 px-1 text-gray-500">
+                    <div className="text-xs mt-1 px-1 text-slate-400">
                       {msg.timestamp}
                     </div>
                   )}
@@ -949,15 +839,16 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
             {loading && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full bg-fuchsia-600 flex items-center justify-center">
                     <Bot size={12} className="text-white" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">Assistant</span>
+                  <span className="text-sm font-medium text-slate-200">Assistant</span>
                 </div>
-                <div className="px-4 py-3 bg-gray-100 rounded-2xl inline-block">
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
-                    <span className="text-gray-700">Thinking...</span>
+                <div className="px-5 py-4 glass rounded-2xl inline-block">
+                  <div className="flex items-center gap-1.5">
+                    <span className="dot w-2 h-2 rounded-full bg-fuchsia-400"></span>
+                    <span className="dot w-2 h-2 rounded-full bg-violet-400"></span>
+                    <span className="dot w-2 h-2 rounded-full bg-pink-400"></span>
                   </div>
                 </div>
               </div>
@@ -968,64 +859,64 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 bg-white p-4">
-          <div className="max-w-3xl mx-auto">
-            <div className="relative">
+        <div className="border-t border-white/10 px-4 shrink-0 min-h-[68px] flex flex-col justify-center">
+          <div className="max-w-3xl mx-auto w-full">
+            <div className="flex items-center gap-2 glass rounded-2xl px-2.5 py-1.5 focus-within:border-fuchsia-500/50 focus-within:ring-4 focus-within:ring-fuchsia-500/10 transition">
+              <button
+                onClick={triggerFileInput}
+                disabled={loading}
+                title="Upload document"
+                className="shrink-0 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition disabled:opacity-50"
+              >
+                <Upload size={18} />
+              </button>
+
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={documents.length === 0 
+                placeholder={documents.length === 0
                   ? "Upload a document first to start chatting..."
                   : backendStatus === "offline"
-                    ? "Simulated mode - Backend offline. Type your question..."
-                    : "Message RAG Assistant..."}
-                className="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none resize-none bg-white"
-                rows="2"
+                    ? "Simulated mode — type your question..."
+                    : "Ask anything about your document..."}
+                className="flex-1 bg-transparent border-0 outline-none resize-none py-2 min-h-[24px] max-h-40 text-white placeholder-slate-500 text-sm leading-relaxed"
+                rows="1"
                 disabled={documents.length === 0}
               />
-              
-              <button 
-  onClick={sendMessage}
-  disabled={!input.trim() || loading || documents.length === 0}
-  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 bg-yellow-400 text-black rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
->
-  <Send size={18} className="text-black" />
-</button>
+
+              <button
+                onClick={sendMessage}
+                disabled={!input.trim() || loading || documents.length === 0}
+                className="btn-grad shrink-0 p-2 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Send"
+              >
+                <Send size={18} />
+              </button>
             </div>
             
-            {/* Upload button in input area */}
-            <div className="flex justify-between items-center mt-3">
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={triggerFileInput}
-                  className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-2 disabled:opacity-50"
-                  disabled={loading}
-                >
-                  <Upload size={14} />
-                  <span>Upload Document</span>
-                  {loading && (
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-400"></div>
-                  )}
-                </button>
-                
-                {backendStatus === "offline" && (
-                  <div className="flex items-center gap-1 text-xs text-amber-600">
-                    <AlertCircle size={12} />
-                    <span>Simulated Mode</span>
-                  </div>
-                )}
-              </div>
-              
-              <div className="text-xs text-gray-500">
-                {documents.length === 0 
-                  ? "Upload a document first to start chatting"
-                  : "Press Enter to send • Shift+Enter for new line"}
-              </div>
+            {/* Hint row */}
+            <div className="flex justify-center items-center gap-3 mt-1.5 text-xs text-slate-500">
+              {loading && (
+                <span className="flex items-center gap-1.5 text-fuchsia-300">
+                  <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-fuchsia-400"></span>
+                  Working...
+                </span>
+              )}
+              {backendStatus === "offline" && (
+                <span className="flex items-center gap-1 text-amber-300">
+                  <AlertCircle size={12} /> Simulated Mode
+                </span>
+              )}
+              <span>
+                {documents.length === 0
+                  ? "Upload a document to start chatting"
+                  : "Press Enter to send · Shift+Enter for new line"}
+              </span>
             </div>
             
             {uploadError && (
-              <div className="mt-2 text-red-500 text-sm bg-red-50 p-2 rounded">
+              <div className="mt-2 text-red-400 text-sm bg-red-500/10 p-2 rounded">
                 {uploadError}
               </div>
             )}
@@ -1041,15 +932,6 @@ className="flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-
         onChange={handleFileUpload}
         className="hidden"
       />
-
-      {/* Mind Map Modal */}
-      {mindMapData && (
-        <MindMapModal
-          data={mindMapData}
-          title={mindMapTitle}
-          onClose={() => setMindMapData(null)}
-        />
-      )}
 
       {/* Profile Modal */}
       {showProfile && (
@@ -1144,11 +1026,11 @@ function PlainTextResponse({ text }) {
   flushPara();
 
   return (
-    <div className="text-left text-sm leading-relaxed text-gray-800 space-y-2">
+    <div className="text-left text-sm leading-relaxed text-white space-y-2">
       {blocks.map((b, i) => {
         if (b.type === "h") {
           return (
-            <div key={i} className="font-semibold text-gray-900 pt-1">
+            <div key={i} className="font-semibold text-white pt-1">
               {b.content}
             </div>
           );
@@ -1168,217 +1050,6 @@ function PlainTextResponse({ text }) {
           </p>
         );
       })}
-    </div>
-  );
-}
-
-// ───────────────────────────────────────────────────────────
-// Mind Map Modal Component
-// ───────────────────────────────────────────────────────────
-function MindMapModal({ data, title, onClose }) {
-  const { root, branches } = data;
-
-  // Layout calculations
-  const rowHeight = 90;
-  const rootX = 40;
-  const rootW = 220;
-  const branchX = 340;
-  const branchW = 240;
-  const childX = 640;
-  const childW = 220;
-
-  const totalRows = branches.reduce(
-    (acc, b) => acc + Math.max(1, (b.children || []).length),
-    0
-  );
-  const height = Math.max(400, totalRows * rowHeight + 80);
-  const width = childX + childW + 60;
-
-  // Compute y positions for branches and children
-  let cursor = 60;
-  const layout = branches.map((b) => {
-    const childCount = Math.max(1, (b.children || []).length);
-    const branchTop = cursor;
-    const branchBottom = cursor + childCount * rowHeight;
-    const branchY = (branchTop + branchBottom) / 2;
-    const children = (b.children || []).map((c, i) => ({
-      ...c,
-      y: branchTop + i * rowHeight + rowHeight / 2,
-    }));
-    cursor = branchBottom;
-    return { ...b, y: branchY, children };
-  });
-
-  const rootY = height / 2;
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center">
-              <Network size={16} className="text-white" />
-            </div>
-            <div>
-              <div className="font-semibold text-gray-900">Mind Map</div>
-              <div className="text-xs text-gray-500 truncate max-w-md">
-                {title}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-            title="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-auto bg-gradient-to-br from-yellow-50 to-white p-6">
-          <svg width={width} height={height} style={{ minWidth: width }}>
-            {/* Root → Branch curves */}
-            {layout.map((b, i) => {
-              const x1 = rootX + rootW;
-              const y1 = rootY;
-              const x2 = branchX;
-              const y2 = b.y;
-              const mx = (x1 + x2) / 2;
-              return (
-                <path
-                  key={`r-${i}`}
-                  d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
-                  stroke="#eab308"
-                  strokeWidth="2.5"
-                  fill="none"
-                />
-              );
-            })}
-
-            {/* Branch → Child curves */}
-            {layout.map((b, i) =>
-              (b.children || []).map((c, j) => {
-                const x1 = branchX + branchW;
-                const y1 = b.y;
-                const x2 = childX;
-                const y2 = c.y;
-                const mx = (x1 + x2) / 2;
-                return (
-                  <path
-                    key={`c-${i}-${j}`}
-                    d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
-                    stroke="#fbbf24"
-                    strokeWidth="1.5"
-                    fill="none"
-                    opacity="0.7"
-                  />
-                );
-              })
-            )}
-
-            {/* Root node */}
-            <g>
-              <rect
-                x={rootX}
-                y={rootY - 36}
-                width={rootW}
-                height={72}
-                rx="14"
-                fill="#facc15"
-                stroke="#ca8a04"
-                strokeWidth="2"
-              />
-              <foreignObject
-                x={rootX + 8}
-                y={rootY - 32}
-                width={rootW - 16}
-                height={64}
-              >
-                <div
-                  xmlns="http://www.w3.org/1999/xhtml"
-                  className="w-full h-full flex items-center justify-center text-center text-sm font-bold text-black px-2"
-                >
-                  {root}
-                </div>
-              </foreignObject>
-            </g>
-
-            {/* Branch nodes */}
-            {layout.map((b, i) => (
-              <g key={`bn-${i}`}>
-                <rect
-                  x={branchX}
-                  y={b.y - 28}
-                  width={branchW}
-                  height={56}
-                  rx="10"
-                  fill="#fef3c7"
-                  stroke="#f59e0b"
-                  strokeWidth="1.5"
-                />
-                <foreignObject
-                  x={branchX + 8}
-                  y={b.y - 24}
-                  width={branchW - 16}
-                  height={48}
-                >
-                  <div
-                    xmlns="http://www.w3.org/1999/xhtml"
-                    className="w-full h-full flex items-center justify-center text-center text-xs font-semibold text-gray-800 px-1"
-                  >
-                    {b.label}
-                  </div>
-                </foreignObject>
-              </g>
-            ))}
-
-            {/* Child nodes */}
-            {layout.map((b, i) =>
-              (b.children || []).map((c, j) => (
-                <g key={`cn-${i}-${j}`}>
-                  <rect
-                    x={childX}
-                    y={c.y - 20}
-                    width={childW}
-                    height={40}
-                    rx="8"
-                    fill="#fffbeb"
-                    stroke="#fde68a"
-                    strokeWidth="1"
-                  />
-                  <foreignObject
-                    x={childX + 6}
-                    y={c.y - 18}
-                    width={childW - 12}
-                    height={36}
-                  >
-                    <div
-                      xmlns="http://www.w3.org/1999/xhtml"
-                      className="w-full h-full flex items-center justify-center text-center text-[11px] text-gray-700 px-1 leading-tight"
-                    >
-                      {c.label}
-                    </div>
-                  </foreignObject>
-                </g>
-              ))
-            )}
-          </svg>
-        </div>
-
-        <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 text-xs text-gray-500 flex items-center justify-between">
-          <span>
-            {branches.length} branches •{" "}
-            {branches.reduce((a, b) => a + (b.children?.length || 0), 0)} leaves
-          </span>
-          <span>Scroll to pan · Click outside to close</span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1436,20 +1107,20 @@ function ProfileModal({ profile, onSave, onClose }) {
     >
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-xl w-full max-w-md shadow-2xl"
+        className="bg-[#0e0e1a] rounded-xl w-full max-w-md shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-fuchsia-600 flex items-center justify-center">
               <User size={16} className="text-white" />
             </div>
-            <div className="font-semibold text-gray-900">Edit Profile</div>
+            <div className="font-semibold text-white">Edit Profile</div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-white/10 rounded-lg"
           >
             <X size={18} />
           </button>
@@ -1458,7 +1129,7 @@ function ProfileModal({ profile, onSave, onClose }) {
         <div className="p-6 space-y-5">
           <div className="flex flex-col items-center gap-3">
             <div
-              className="w-24 h-24 rounded-full bg-yellow-100 border-2 border-yellow-300 overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-90"
+              className="w-24 h-24 rounded-full bg-fuchsia-500/10 border-2 border-fuchsia-500/40 overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-90"
               onClick={() => avatarInputRef.current?.click()}
               title="Click to change"
             >
@@ -1469,14 +1140,14 @@ function ProfileModal({ profile, onSave, onClose }) {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <User size={40} className="text-yellow-600" />
+                <User size={40} className="text-fuchsia-300" />
               )}
             </div>
             <div className="flex items-center gap-3 text-xs">
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="text-yellow-700 hover:text-yellow-800 font-medium"
+                className="text-fuchsia-300 hover:text-amber-300 font-medium"
               >
                 Upload photo
               </button>
@@ -1484,7 +1155,7 @@ function ProfileModal({ profile, onSave, onClose }) {
                 <button
                   type="button"
                   onClick={() => setAvatar("")}
-                  className="text-gray-500 hover:text-red-500"
+                  className="text-slate-400 hover:text-red-400"
                 >
                   Remove
                 </button>
@@ -1500,49 +1171,49 @@ function ProfileModal({ profile, onSave, onClose }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-slate-200 mb-1">
               Name
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none text-sm"
+              className="w-full px-3 py-2 border border-white/10 rounded-lg focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 outline-none text-sm"
               placeholder="Your name"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-slate-200 mb-1">
               Email
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none text-sm"
+              className="w-full px-3 py-2 border border-white/10 rounded-lg focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 outline-none text-sm"
               placeholder="you@example.com"
             />
           </div>
 
           {error && (
-            <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
               {error}
             </div>
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 rounded-b-xl">
+        <div className="px-5 py-3 border-t border-white/10 bg-white/5 flex justify-end gap-2 rounded-b-xl">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+            className="px-4 py-2 text-sm text-slate-200 hover:bg-white/10 rounded-lg"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 text-sm bg-yellow-400 hover:bg-yellow-300 text-black rounded-lg font-medium"
+            className="px-4 py-2 text-sm bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg font-medium"
           >
             Save Changes
           </button>
@@ -1570,21 +1241,21 @@ function SettingsModal({ settings, backendStatus, onSave, onClose, onLogout }) {
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="w-full flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-gray-50 text-left"
+      className="w-full flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-white/5 text-left"
     >
       <div>
-        <div className="text-sm font-medium text-gray-800">{label}</div>
+        <div className="text-sm font-medium text-white">{label}</div>
         {description && (
-          <div className="text-xs text-gray-500 mt-0.5">{description}</div>
+          <div className="text-xs text-slate-400 mt-0.5">{description}</div>
         )}
       </div>
       <div
         className={`relative w-10 h-6 rounded-full transition-colors ${
-          checked ? "bg-yellow-400" : "bg-gray-300"
+          checked ? "bg-fuchsia-600" : "bg-white/20"
         }`}
       >
         <div
-          className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+          className={`absolute top-0.5 w-5 h-5 bg-[#0e0e1a] rounded-full shadow transition-transform ${
             checked ? "translate-x-4" : "translate-x-0.5"
           }`}
         />
@@ -1598,26 +1269,26 @@ function SettingsModal({ settings, backendStatus, onSave, onClose, onLogout }) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl w-full max-w-md shadow-2xl"
+        className="bg-[#0e0e1a] rounded-xl w-full max-w-md shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-yellow-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-fuchsia-600 flex items-center justify-center">
               <Settings size={16} className="text-white" />
             </div>
-            <div className="font-semibold text-gray-900">Settings</div>
+            <div className="font-semibold text-white">Settings</div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-white/10 rounded-lg"
           >
             <X size={18} />
           </button>
         </div>
 
         <div className="p-4 space-y-1">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 pt-2 pb-1">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pt-2 pb-1">
             Chat Preferences
           </div>
           <Toggle
@@ -1639,18 +1310,18 @@ function SettingsModal({ settings, backendStatus, onSave, onClose, onLogout }) {
             description="Reduce padding between messages"
           />
 
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 pt-4 pb-1">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pt-4 pb-1">
             System
           </div>
           <div className="flex items-center justify-between px-3 py-2 text-sm">
-            <span className="text-gray-700">Backend</span>
+            <span className="text-slate-200">Backend</span>
             <span
               className={`px-2 py-0.5 rounded-full text-xs ${
                 backendStatus === "online"
-                  ? "bg-green-100 text-green-700"
+                  ? "bg-emerald-500/15 text-emerald-300"
                   : backendStatus === "offline"
-                  ? "bg-red-100 text-red-700"
-                  : "bg-yellow-100 text-yellow-700"
+                  ? "bg-red-400/20 text-red-300"
+                  : "bg-fuchsia-500/10 text-fuchsia-300"
               }`}
             >
               {backendStatus}
@@ -1658,22 +1329,22 @@ function SettingsModal({ settings, backendStatus, onSave, onClose, onLogout }) {
           </div>
           <button
             onClick={onLogout}
-            className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+            className="w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-red-500/10 rounded-lg"
           >
             Log out
           </button>
         </div>
 
-        <div className="px-5 py-3 border-t border-gray-200 bg-gray-50 flex justify-end gap-2 rounded-b-xl">
+        <div className="px-5 py-3 border-t border-white/10 bg-white/5 flex justify-end gap-2 rounded-b-xl">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+            className="px-4 py-2 text-sm text-slate-200 hover:bg-white/10 rounded-lg"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm bg-yellow-400 hover:bg-yellow-300 text-black rounded-lg font-medium"
+            className="px-4 py-2 text-sm bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg font-medium"
           >
             Save
           </button>

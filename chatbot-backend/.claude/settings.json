@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Nanditha Sai/Desktop/chatbot/chatbot-frontend/src/**)",
+      "Read(//c/Users/Nanditha Sai/Desktop/chatbot/chatbot-frontend/**)",
+      "Bash(grep -E '\\\\.env$')",
+      "Bash(ls venv/Scripts/python.exe)",
+      "Bash(venv/Scripts/python.exe -c \"import httpx, pymongo, dotenv; from pymongo.operations import SearchIndexModel; print\\('✅ deps present, pymongo', pymongo.__version__\\)\")",
+      "Bash(PYTHONIOENCODING=utf-8 venv/Scripts/python.exe scripts/setup_rag.py)",
+      "Bash(PYTHONIOENCODING=utf-8 venv/Scripts/python.exe scripts/test_rag.py)",
+      "Bash(PYTHONIOENCODING=utf-8 venv/Scripts/python.exe -m uvicorn app.main:app --port 8000)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(break)",
+      "Bash(PYTHONIOENCODING=utf-8 venv/Scripts/python.exe scripts/test_api.py)",
+      "Bash(npm run *)",
+      "Bash(sed -i -e 's|bg-white|bg-[#0e0e1a]|g' -e 's|bg-gray-50|bg-white/5|g' -e 's|bg-gray-100|bg-white/10|g' -e 's|bg-gray-300|bg-white/20|g' -e 's|text-gray-900|text-white|g' -e 's|text-gray-800|text-white|g' -e 's|text-gray-700|text-slate-200|g' -e 's|text-gray-600|text-slate-400|g' -e 's|text-gray-500|text-slate-400|g' -e 's|border-gray-200|border-white/10|g' -e 's|border-gray-300|border-white/10|g' -e 's|border-gray-800|border-white/10|g' -e 's|border-slate-200|border-white/10|g' -e 's|text-black|text-white|g' -e 's|bg-emerald-600|bg-fuchsia-600|g' -e 's|bg-emerald-500|bg-fuchsia-500|g' -e 's|bg-emerald-50|bg-fuchsia-500/10|g' -e 's|text-emerald-700|text-fuchsia-300|g' -e 's|text-emerald-600|text-fuchsia-400|g' -e 's|text-emerald-500|text-fuchsia-400|g' -e 's|border-emerald-500|border-fuchsia-500|g' -e 's|border-emerald-300|border-fuchsia-500/40|g' -e 's|focus:ring-emerald-500|focus:ring-fuchsia-500|g' -e 's|focus:border-emerald-500|focus:border-fuchsia-500|g' -e 's|from-emerald-50|from-violet-500/10|g' -e 's|bg-green-100|bg-emerald-500/15|g' -e 's|text-green-800|text-emerald-300|g' -e 's|text-green-700|text-emerald-300|g' -e 's|text-green-500|text-emerald-400|g' -e 's|bg-green-500|bg-emerald-400|g' -e 's|bg-red-100|bg-red-400/20|g' -e 's|bg-red-500|bg-red-400|g' -e 's|bg-red-50|bg-red-500/10|g' -e 's|text-red-800|text-red-300|g' -e 's|text-red-700|text-red-300|g' -e 's|text-red-600|text-red-300|g' -e 's|text-red-500|text-red-400|g' -e 's|border-red-200|border-red-500/30|g' -e 's|text-amber-700|text-amber-300|g' -e 's|text-amber-600|text-amber-300|g' -e 's|to-white|to-transparent|g' src/components/ChatPage.jsx)",
+      "Bash(grep -oE '\\(bg|text|border\\)-\\(gray|emerald|green\\)-[0-9]+|bg-white\\([^/]|$\\)' src/components/ChatPage.jsx)",
+      "Bash(npx vite *)",
+      "Bash(venv/Scripts/python.exe -m py_compile app/main.py)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Nanditha Sai\\Desktop\\chatbot\\chatbot-frontend\\src\\components",
+      "c:\\Users\\Nanditha Sai\\Desktop\\chatbot\\chatbot-frontend\\src",
+      "c:\\Users\\Nanditha Sai\\Desktop\\chatbot\\chatbot-frontend"
+    ]
+  }
+}

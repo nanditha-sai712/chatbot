@@ -3,10 +3,13 @@
 # ============================
 
 import os
+import re
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 import io
+
+import httpx
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,12 +34,14 @@ load_dotenv()
 
 MONGO_URL = os.getenv("MONGO_URL")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+JINA_API_KEY = os.getenv("JINA_API_KEY")
 
 if not MONGO_URL:
     raise Exception("❌ MONGO_URL missing in .env")
 
 print("MongoDB:", "✅ configured")
 print("Groq:", "✅ configured" if GROQ_API_KEY else "❌ missing")
+print("Jina:", "✅ configured" if JINA_API_KEY else "❌ missing")
 
 
 # ============================
@@ -71,6 +76,7 @@ except Exception as e:
 users_collection = db["users"] if db is not None else []
 documents_collection = db["documents"] if db is not None else []
 responses_collection = db["responses"] if db is not None else []
+chunks_collection = db["chunks"] if db is not None else []
 
 
 
@@ -200,7 +206,98 @@ def extract_text_from_file(file: UploadFile) -> str:
             400,
             f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(SUPPORTED_EXTENSIONS))}",
         )
-    return (text or "").strip()[:10000]
+    text = (text or "").strip()
+    # Collapse runs of 3+ identical letters — some PDF/PPTX files extract with
+    # each character duplicated (e.g. "TTTThhhhrrrree" -> "Three"). No English
+    # word has a letter 3+ times in a row, so legit doubles are preserved.
+    text = re.sub(r"([A-Za-z])\1{2,}", r"\1", text)
+    # RAG handles full documents via chunking, so keep a generous cap
+    # (protects memory on small/free hosting tiers).
+    return text[:200000]
+
+
+# ============================
+# RAG CORE — CHUNK / EMBED / SEARCH
+# ============================
+
+VECTOR_INDEX_NAME = "vector_index"   # must match the Atlas Search index name
+EMBED_MODEL = "jina-embeddings-v3"
+EMBED_DIM = 1024                     # jina-embeddings-v3 default output size
+TOP_K = 5                            # how many chunks to retrieve per question
+
+
+def chunk_text(text: str, size: int = 1200, overlap: int = 200) -> List[str]:
+    """Split text into overlapping, word-aware chunks."""
+    text = (text or "").strip()
+    if not text:
+        return []
+
+    words = text.split()
+    chunks = []
+    step = max(1, size - overlap)
+    for start in range(0, len(words), step):
+        chunk = " ".join(words[start:start + size])
+        if chunk.strip():
+            chunks.append(chunk)
+    return chunks
+
+
+def embed(texts: List[str], is_query: bool = False) -> List[List[float]]:
+    """Get embeddings from Jina. is_query=True for the question, False for documents."""
+    if not JINA_API_KEY:
+        raise HTTPException(500, "JINA_API_KEY missing — embeddings not configured.")
+    if not texts:
+        return []
+
+    payload = {
+        "model": EMBED_MODEL,
+        "task": "retrieval.query" if is_query else "retrieval.passage",
+        "dimensions": EMBED_DIM,
+        "input": [{"text": t} for t in texts],
+    }
+    try:
+        resp = httpx.post(
+            "https://api.jina.ai/v1/embeddings",
+            headers={
+                "Authorization": f"Bearer {JINA_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=60,
+        )
+        resp.raise_for_status()
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"Embedding request failed: {e}")
+
+    data = resp.json().get("data", [])
+    # Keep the order Jina returns (it includes an "index" field)
+    data.sort(key=lambda d: d.get("index", 0))
+    return [d["embedding"] for d in data]
+
+
+def vector_search(query_vector: List[float], document_id: str, user_id: str, k: int = TOP_K):
+    """Find the most relevant chunks for a question, scoped to one user's document."""
+    pipeline = [
+        {
+            "$vectorSearch": {
+                "index": VECTOR_INDEX_NAME,
+                "path": "embedding",
+                "queryVector": query_vector,
+                "numCandidates": max(100, k * 20),
+                "limit": k,
+                "filter": {"document_id": document_id, "user_id": user_id},
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "text": 1,
+                "chunk_index": 1,
+                "score": {"$meta": "vectorSearchScore"},
+            }
+        },
+    ]
+    return list(chunks_collection.aggregate(pipeline))
 
 
 def ask_groq(prompt: str, context: str = ""):
@@ -348,21 +445,49 @@ async def _handle_upload(
 
     doc_id = str(uuid.uuid4())
 
+    # 1) Split the document into chunks
+    chunks = chunk_text(text)
+    if not chunks:
+        raise HTTPException(400, "Could not split the document into chunks.")
+
+    # 2) Embed every chunk via Jina
+    vectors = embed(chunks, is_query=False)
+    if len(vectors) != len(chunks):
+        raise HTTPException(502, "Embedding count did not match chunk count.")
+
+    # 3) Store one record per chunk (with its vector) for retrieval
+    chunk_docs = [
+        {
+            "_id": str(uuid.uuid4()),
+            "document_id": doc_id,
+            "user_id": user_id,
+            "chunk_index": i,
+            "text": chunk,
+            "embedding": vector,
+        }
+        for i, (chunk, vector) in enumerate(zip(chunks, vectors))
+    ]
+    chunks_collection.insert_many(chunk_docs)
+
+    # Keep document metadata (content kept for the summary / reference)
     documents_collection.insert_one({
         "_id": doc_id,
         "user_id": user_id,
         "name": document_name,
         "file_type": ext.lstrip("."),
         "content": text,
+        "num_chunks": len(chunks),
         "uploaded_at": datetime.now(),
     })
 
-    summary = ask_groq("Summarize this document briefly", text)
+    # Brief summary from the start of the document (cheap, optional)
+    summary = ask_groq("Summarize this document briefly", text[:3000])
 
     return {
         "document_id": doc_id,
         "document_name": document_name,
         "file_type": ext.lstrip("."),
+        "num_chunks": len(chunks),
         "summary": summary[:200],
         "message": "Document uploaded successfully",
     }
@@ -395,7 +520,8 @@ def chat(chat: ChatRequest):
 
     context = ""
 
-    # If document_id provided → fetch document
+    # If a document is selected → real RAG: embed the question, retrieve
+    # the most relevant chunks, and build context only from those.
     if chat.document_id:
         doc = documents_collection.find_one({
             "_id": chat.document_id,
@@ -405,9 +531,26 @@ def chat(chat: ChatRequest):
         if not doc:
             raise HTTPException(404, "Document not found")
 
-        context = doc.get("content", "")
+        # 1) Embed the question
+        query_vec = embed([chat.message], is_query=True)[0]
 
-    # Ask Groq (with or without context)
+        # 2) Retrieve top-K relevant chunks via Atlas Vector Search
+        try:
+            hits = vector_search(query_vec, chat.document_id, chat.user_id)
+        except Exception as e:
+            # Most common cause: the Atlas vector index isn't created yet.
+            raise HTTPException(
+                500,
+                f"Vector search failed (is the '{VECTOR_INDEX_NAME}' Atlas index created?): {e}",
+            )
+
+        # 3) Fallback for documents uploaded before RAG (no chunks yet)
+        if not hits:
+            context = doc.get("content", "")[:3000]
+        else:
+            context = "\n\n".join(h["text"] for h in hits)
+
+    # Ask Groq using only the retrieved context
     answer = ask_groq(chat.message, context)
 
     responses_collection.insert_one({
