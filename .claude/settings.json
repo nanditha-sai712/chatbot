@@ -21,7 +21,12 @@
       "Bash(git rebase *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" --max-time 15 https://chatbot-eo65.onrender.com/health)",
       "Bash(git commit --amend -m ' *)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(gh auth *)",
+      "Bash(gh api *)",
+      "Bash(curl -s --max-time 20 https://api.github.com/repos/nanditha-sai712/chatbot/commits/107de3b)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); c=d.get\\('commit',{}\\); print\\('author:   ', c.get\\('author',{}\\).get\\('name'\\), c.get\\('author',{}\\).get\\('email'\\)\\); print\\('committer:', c.get\\('committer',{}\\).get\\('name'\\), c.get\\('committer',{}\\).get\\('email'\\)\\); print\\('message:  ', repr\\(c.get\\('message'\\)\\)\\); print\\('top-level author login:', \\(d.get\\('author'\\) or {}\\).get\\('login'\\)\\); print\\('top-level committer login:', \\(d.get\\('committer'\\) or {}\\).get\\('login'\\)\\)\")",
+      "Bash(git check-ignore *)"
     ]
   }
 }
